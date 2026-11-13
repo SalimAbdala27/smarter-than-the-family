@@ -1,4 +1,4 @@
-# Chinwag
+# Are You Smarter Than The Family?
 
 Jackbox-style party games for a UK crowd. One screen (TV or laptop) shows the game; everyone plays on their phone in the browser. No app to install.
 
@@ -6,7 +6,10 @@ Jackbox-style party games for a UK crowd. One screen (TV or laptop) shows the ga
 |---|---|---|
 | **Story Time** | 2–10 | Everyone fills in blanks ("a UK town", "a verb ending in -ing") without seeing the story. The finished story is shown line by line and can be read aloud in a British voice. Then everyone votes for the best word. |
 | **Head to Head** | 3–10 | Each prompt goes to two players. Everyone else votes for the funnier answer. Round 2 scores double. The final round is one prompt that everyone answers. |
-| **Pub Quiz** | 1–10 | 449 built-in questions in 15 genres, plus a picture round from your own photos. It mixes multiple choice with typed answers, and faster answers score more. |
+| **Pub Quiz** | 1–10 | 449 built-in questions in 15 genres, plus a picture round from your own photos. It mixes multiple choice with typed answers, and faster answers score more. It ends with **The Final Chase**. |
+
+### The Final Chase
+This round runs at the end of the Pub Quiz (switch it off in the lobby if you like). Your quiz rank buys a head start of 1–4 steps on a 10-step track. **The Family** 👪 is a computer chaser that starts at the back and gets about 70% of questions right. A right answer moves you 1 step, and the fastest right answer moves 2. If The Family reaches your square, you're caught and out. Reaching HOME scores +2000 if you're first and +1000 after that, and anyone still running when the questions run out gets +500.
 
 ## Run it
 
@@ -23,7 +26,7 @@ The first person to join is the **VIP 👑** and can start or skip games from th
 
 ```bash
 npm i -g pm2
-pm2 start server/index.js --name chinwag
+pm2 start server/index.js --name family
 pm2 save && pm2 startup   # restarts on boot
 ```
 
@@ -32,7 +35,7 @@ pm2 save && pm2 startup   # restarts on boot
 Deploy it anywhere that runs Node or Docker (Render, Railway, Fly.io), or expose the Mac mini with a Cloudflare Tunnel. Set `PUBLIC_URL` to the public address so the QR code points there.
 
 ```bash
-docker build -t chinwag . && docker run -p 3000:3000 -v $(pwd)/data:/app/data chinwag
+docker build -t family . && docker run -p 3000:3000 -v $(pwd)/data:/app/data family
 ```
 
 ## Fresh content from Claude (optional)
@@ -51,11 +54,11 @@ Everything it writes is checked for the right format and saved to `data/generate
 | Variable | Default | |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — | Turns on Claude content |
-| `CHINWAG_MODEL` | `claude-haiku-5-5` | Any Claude model id |
+| `FAMILY_MODEL` | `claude-haiku-5-5` | Any Claude model id |
 | `PORT` | `3000` | |
 | `PUBLIC_URL` | auto (LAN IP) | Address phones should use |
-| `CHINWAG_PICTURES_DIR` | `public/pictures` | Picture round folder |
-| `CHINWAG_DATA_DIR` | `data/` | Generated content and the binned-question list |
+| `FAMILY_PICTURES_DIR` | `public/pictures` | Picture round folder |
+| `FAMILY_DATA_DIR` | `data/` | Generated content and the binned-question list |
 
 ## Adding your own content
 

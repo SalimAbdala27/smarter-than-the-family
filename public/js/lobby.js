@@ -1,7 +1,7 @@
 /* Game picker shared by the host screen and the VIP's phone. */
 (function () {
   const { esc } = window.CW;
-  const pick = { gameId: null, options: { categories: [], count: 15, custom: '', fresh: false } };
+  const pick = { gameId: null, options: { categories: [], count: 15, custom: '', fresh: false, chase: true } };
 
   function html(state) {
     const games = state.games;
@@ -13,6 +13,7 @@
     if (g.id === 'pubquiz') {
       opts += `<div class="opts">${g.categories.map((c) => `<button class="toggle ${o.categories.includes(c.id) ? 'on' : ''}" data-cat="${c.id}">${c.emoji} ${esc(c.name)}</button>`).join('')}</div>
         <div class="opts dim" style="font-size:.85em">${o.categories.length ? '' : 'No genres picked = a bit of everything'}</div>
+        <div class="opts"><button class="toggle ${o.chase ? 'on' : ''}" data-chase="1">🏃 Final Chase at the end</button></div>
         <div class="opts">${[10, 15, 20, 30].map((c) => `<button class="toggle ${o.count === c ? 'on' : ''}" data-count="${c}">${c} questions</button>`).join('')}</div>`;
       if (state.ai) {
         opts += `<div class="opts" style="width:100%"><input class="field" data-key="custom" id="customTopic" maxlength="60" placeholder="Or type any genre… e.g. 90s Premier League" value="${esc(o.custom)}"></div>`;
@@ -46,6 +47,7 @@
       rerender();
     }));
     root.querySelectorAll('[data-count]').forEach((b) => b.addEventListener('click', () => { pick.options.count = Number(b.dataset.count); rerender(); }));
+    root.querySelectorAll('[data-chase]').forEach((b) => b.addEventListener('click', () => { pick.options.chase = !pick.options.chase; rerender(); }));
     root.querySelectorAll('[data-fresh]').forEach((b) => b.addEventListener('click', () => { pick.options.fresh = !pick.options.fresh; rerender(); }));
     const ct = root.querySelector('#customTopic');
     if (ct) ct.addEventListener('input', () => { pick.options.custom = ct.value; });

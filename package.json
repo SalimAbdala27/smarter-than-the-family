@@ -1,7 +1,7 @@
 {
-  "name": "chinwag",
+  "name": "smarter-than-the-family",
   "version": "1.0.0",
-  "description": "Jackbox-style party games for UK crowds: Story Time, Head to Head, Pub Quiz",
+  "description": "Are You Smarter Than The Family? Jackbox-style party games: Story Time, Head to Head, Pub Quiz + Final Chase",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",

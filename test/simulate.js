@@ -2,7 +2,7 @@
 // End-to-end bot test: a host and N bot phones play every game to the end.
 // Run: npm test   (uses port 3999)
 process.env.PORT = process.env.PORT || '3999';
-process.env.CHINWAG_DATA_DIR = require('path').join(require('os').tmpdir(), 'chinwag-test');
+process.env.FAMILY_DATA_DIR = require('path').join(require('os').tmpdir(), 'family-test');
 const { io: Client } = require('socket.io-client');
 const { server } = require('../server/index');
 
@@ -33,6 +33,9 @@ function act(b) {
     if (g.screen === 'battle' && !g.inBattle && !g.myVote) once(`hv${g.round}${g.battle.prompt}`, () => send('vote', { pid: pick([g.battle.a.pid, g.battle.b.pid]) }));
     if (g.screen === 'finalVote' && !g.myVote && g.final.answers.length) once('hfv', () => send('vote', { pid: pick(g.final.answers).pid }));
   }
+  if (g.id === 'pubquiz' && g.screen === 'chaseQ' && g.chase.question && g.chase.myAnswer == null) {
+    once(`c${g.chase.n}`, () => send('answer', { choice: Math.random() < 0.6 ? 0 : Math.floor(Math.random() * 4) }));
+  }
   if (g.id === 'pubquiz' && g.screen === 'question' && g.myAnswer == null) {
     once(`q${g.n}`, () => (g.question.kind === 'typed' ? send('answer', { text: pick(['Pacific', 'Edinburgh', 'Luigi', 'dunno']) }) : send('answer', { choice: Math.floor(Math.random() * 4) })));
   }
@@ -47,7 +50,7 @@ async function playGame(host, bots, gameId, options) {
     if (!g) return;
     seen.add(g.screen);
     // Host skips the "look at the screen" pauses so the test runs fast.
-    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult'].includes(g.screen)) {
+    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal'].includes(g.screen)) {
       setTimeout(() => host.emit('host:action', { type: 'next' }), 30);
     }
     if (g.id === 'storytime' && g.screen === 'results') finished(st);
@@ -114,6 +117,10 @@ async function playGame(host, bots, gameId, options) {
   host.off('state', toggler);
   console.log('Pub Quiz ✓ screens:', [...r.seen].join(' → '), toggled ? `· host overrule tested (${toggled.right ? 'right→wrong' : 'wrong→right'})` : '· (no typed reveal hit)');
   console.log('    scores:', r.st.game.scores.map((s) => `${s.name} ${s.score}`).join(', '));
+  if (!r.st.game.chase) throw new Error('final chase did not run');
+  const t = r.st.game.chase.track;
+  console.log('Final Chase ✓', `family at ${t.family}/${t.length}:`, t.runners.map((x) => `${x.name} started ${x.start} → ${x.status}${x.status === 'home' ? ` #${x.order + 1}` : ''} (+${x.bonus})`).join(', '));
+  if (t.runners.some((x) => x.status === 'running')) throw new Error('runner left running');
 
   // Head to Head needs 3+: drop to 2 and check it refuses.
   await emit(host, 'host:action', { type: 'lobby' });

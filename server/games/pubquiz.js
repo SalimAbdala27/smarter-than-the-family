@@ -3,6 +3,7 @@ const { BaseGame, shuffle, pickFresh, clean } = require('./base');
 const quizBank = require('../content/quiz');
 const { isCorrect } = require('../answers');
 const ai = require('../ai');
+const Chase = require('./chase');
 
 const CHOICE_MS = 20000;
 const TYPED_MS = 30000;
@@ -28,7 +29,7 @@ class PubQuiz extends BaseGame {
     return {
       id: 'pubquiz',
       name: 'Pub Quiz',
-      tagline: 'General knowledge, emoji puzzles and picture rounds. Faster answers score more.',
+      tagline: 'General knowledge, emoji and picture rounds, then the Final Chase. Faster answers score more.',
       minPlayers: 1,
       maxPlayers: 10,
       categories: quizBank.categories(),
@@ -95,6 +96,16 @@ class PubQuiz extends BaseGame {
       return base;
     });
     if (!this.questions.length) { this.notice = 'No questions found for those categories.'; this.screen = 'over'; this.room.update(); return; }
+    if (o.chase !== false) {
+      const used = new Set(this.questions.map((q) => q.q + q.answer));
+      const pickChase = (ids) => bankFor(ids).filter((q) => q.kind === 'choice' && !used.has(q.q + q.answer));
+      let pool = pickChase(catIds);
+      if (pool.length < 15) pool = pickChase(allCats);
+      this.chaseQs = pickFresh(pool, 15, this.seen).map((q) => {
+        const options = shuffle([q.answer, ...q.wrong]);
+        return { q: q.q, options, correct: options.indexOf(q.answer), category: catName[q.cat] || '' };
+      });
+    }
     this.qi = -1;
     this.nextQuestion();
     this.room.update();
@@ -105,7 +116,11 @@ class PubQuiz extends BaseGame {
 
   nextQuestion() {
     this.qi += 1;
-    if (!this.current) { this.clearTimer(); this.screen = 'over'; return; }
+    if (!this.current) {
+      this.clearTimer();
+      if (this.chaseQs && this.chaseQs.length) { this.chase = new Chase(this, this.chaseQs); this.chase.start(); } else this.screen = 'over';
+      return;
+    }
     this.answers = {}; // pid → { choice | text, at }
     this.result = {}; // pid → { right, pts }
     this.askedAt = Date.now();
@@ -143,7 +158,10 @@ class PubQuiz extends BaseGame {
 
   allIn() { return this.players.filter((x) => x.connected).every((x) => this.answers[x.id]); }
 
+  get inChase() { return !!this.chase && this.screen.startsWith('chase'); }
+
   onPlayerAction(p, type, d) {
+    if (type === 'answer' && this.inChase) return this.chase.answer(p, d.choice);
     if (type !== 'answer' || this.screen !== 'question' || this.answers[p.id]) return;
     const q = this.current;
     if (q.kind === 'choice') {
@@ -177,12 +195,16 @@ class PubQuiz extends BaseGame {
       return;
     }
     if (type !== 'skip' && type !== 'next') return;
+    if (this.inChase) return this.chase.onNext();
     if (this.screen === 'question') this.reveal();
     else if (this.screen === 'reveal') this.afterReveal();
     else if (this.screen === 'board') this.nextQuestion();
   }
 
-  onPlayerDisconnect() { if (this.screen === 'question' && this.allIn()) this.reveal(); }
+  onPlayerDisconnect() {
+    if (this.screen === 'question' && this.allIn()) this.reveal();
+    if (this.screen === 'chaseQ' && this.chase.allIn()) this.chase.reveal();
+  }
 
   questionView() {
     const q = this.current;
@@ -192,6 +214,8 @@ class PubQuiz extends BaseGame {
   hostView() {
     const v = { ...this.common(), notice: this.notice };
     if (!this.questions) return v;
+    if (this.inChase) return { ...v, chase: this.chase.hostView() };
+    if (this.chase && this.chase.finished) v.chase = { track: this.chase.track() };
     v.n = this.qi + 1;
     v.of = this.questions.length;
     if (this.current && (this.screen === 'question' || this.screen === 'reveal')) {
@@ -219,6 +243,8 @@ class PubQuiz extends BaseGame {
   playerView(p) {
     const v = this.common();
     if (!this.questions) return v;
+    if (this.inChase) return { ...v, chase: this.chase.playerView(p) };
+    if (this.chase && this.chase.finished) v.chase = this.chase.playerView(p);
     v.n = this.qi + 1;
     v.of = this.questions.length;
     const q = this.current;

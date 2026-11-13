@@ -41,8 +41,8 @@
     top.innerHTML = '';
     const s = session();
     render(main, `
-      <div style="text-align:center;margin:6vh 0 4vh"><div class="logo" style="font-size:3.2em">CHIN<b>WAG</b></div>
-      <div class="dim" style="margin-top:6px">Party games for your phone</div></div>
+      <div style="text-align:center;margin:5vh 0 4vh"><div class="logo" style="font-size:2.3em;line-height:1.05">ARE YOU<br><b>SMARTER</b><br>THAN THE<br><b>FAMILY?</b></div>
+      <div class="dim" style="margin-top:10px">Party games for your phone</div></div>
       <div class="stack">
         ${error ? `<div class="err">${esc(error)}</div>` : ''}
         <input class="field" data-key="code" id="code" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ROOM CODE" style="text-align:center;letter-spacing:.3em;font-family:var(--display);text-transform:uppercase" value="${esc(params.get('code') || '')}">
@@ -77,7 +77,7 @@
       <span class="dim" style="font-size:.85em">${state.code}</span><span class="score">${me.score}</span>`;
 
     // Buzz on a new phase so people look down at their phones.
-    const phase = g ? `${g.id}${g.screen}${g.n || ''}${g.round || ''}${g.battle ? g.battle.index : ''}` : 'lobby';
+    const phase = g ? `${g.id}${g.screen}${g.n || (g.chase && g.chase.n) || ''}${g.round || ''}${g.battle ? g.battle.index : ''}` : 'lobby';
     if (phase !== lastPhase) { lastPhase = phase; if (navigator.vibrate) navigator.vibrate(40); }
 
     let html;
@@ -194,9 +194,55 @@
         return g.right ? wait('🎉', `Correct! +${g.gained}`, `It was: ${esc(g.answer)}`) : wait('🙈', 'Wrong!', `It was: ${esc(g.answer)}`);
       },
       board: (g) => `<h1>Leaderboard</h1>${scoreboard(g.scores)}`,
-      over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
+      chaseIntro: (g) => {
+        const m = g.chase.me;
+        return `<h1>The Final Chase</h1>
+          <p>You start <b>${m.start} step${m.start === 1 ? '' : 's'}</b> ahead of <b>The Family</b> 👪. Right answers move you forward, the fastest moves 2. Get caught and you're out. First one home wins <b>+2000</b>.</p>
+          ${miniTrack(g.chase)}`;
+      },
+      chaseQ: (g) => {
+        const c = g.chase;
+        if (!c.question) return `${statusWait(c.me)}${miniTrack(c)}`;
+        const mine = c.myAnswer;
+        return `${timer()}<div class="counter" style="text-align:left">Chase Q${c.n} · The Family is <b>${c.me.gap}</b> behind</div>
+          <div class="hint-ex" style="margin:0 0 10px;color:var(--ink)">${esc(c.question.q)}</div>
+          <div class="quiz-btns">${c.question.options.map((o, i) => `
+            <button class="ans-${i} ${mine == null ? '' : (mine === i ? 'mine' : 'faded')}" data-choice="${i}" ${mine == null ? '' : 'disabled'}><span class="sh">${SHAPES[i]}</span>${esc(o)}</button>`).join('')}</div>`;
+      },
+      chaseReveal: (g) => {
+        const c = g.chase;
+        const m = c.me;
+        if (!m) return wait('👀', 'Look at the big screen');
+        let head;
+        if (c.log.caught.includes(state.me.id)) head = wait('😱', 'CAUGHT!', `It was: ${esc(c.answer)}`);
+        else if (m.status === 'home' && m.moved) head = wait('🏠', m.order === 0 ? 'FIRST HOME!' : 'You made it home!', `It was: ${esc(c.answer)}`);
+        else if (m.status !== 'running') head = statusWait(m);
+        else head = wait(m.moved ? '🏃' : '🙈', m.moved ? `Right! +${m.moved} step${m.moved > 1 ? 's' : ''}` : 'Wrong, you stay put', `It was: ${esc(c.answer)} · The Family ${c.log.familyRight ? 'got it right' : 'got it wrong'}`);
+        return head + miniTrack(c);
+      },
+      over: (g) => `${g.chase && g.chase.me ? `<h2>${{ home: g.chase.me.order === 0 ? '🏠 First home! +2000' : '🏠 Escaped! +1000', survived: '😅 Survived! +500', caught: '😱 Caught by The Family' }[g.chase.me.status] || ''}</h2>` : ''}<h1>Final scores</h1>${scoreboard(g.scores)}`,
     },
   };
+
+  function statusWait(m) {
+    if (!m) return wait('👀', 'Look at the big screen');
+    if (m.status === 'caught') return wait('😱', 'You got caught', 'Watch the others run for it!');
+    if (m.status === 'home') return wait('🏠', 'You escaped!', 'Watch the others run for it!');
+    return wait('👀', 'Look at the big screen');
+  }
+
+  function miniTrack(c) {
+    const t = c.track;
+    return `<div class="track" style="margin-top:16px">${t.runners.map((r) => {
+      let cells = '';
+      for (let i = 0; i <= t.length; i++) {
+        const here = r.pos === i && r.status !== 'caught';
+        const fam = t.family === i && r.status !== 'home';
+        cells += `<div class="cell ${i === t.length ? 'home' : ''} ${i < t.family ? 'gone' : ''}">${fam ? '<span class="fam">👪</span>' : ''}${here ? `<span class="tok" style="background:${r.colour}">${esc(r.name[0])}</span>` : ''}</div>`;
+      }
+      return `<div class="lane ${r.status}"><div class="who" style="font-size:.8em">${esc(r.name)}${r.status === 'caught' ? ' · caught' : r.status === 'home' ? ' · home' : ''}</div><div class="cells">${cells}</div></div>`;
+    }).join('')}</div>`;
+  }
 
   // ---------- events ----------
   function bind(g) {

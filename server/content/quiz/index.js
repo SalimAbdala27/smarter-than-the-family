@@ -6,7 +6,7 @@ const path = require('path');
 
 const ORDER = ['geography', 'history', 'science', 'nature', 'sport', 'football', 'music', 'screen',
   'celebs', 'gaming', 'food', 'britain', 'cars', 'words', 'emoji'];
-const PICTURES_DIR = process.env.CHINWAG_PICTURES_DIR || path.join(__dirname, '..', '..', '..', 'public', 'pictures');
+const PICTURES_DIR = process.env.FAMILY_PICTURES_DIR || path.join(__dirname, '..', '..', '..', 'public', 'pictures');
 
 const files = fs.readdirSync(__dirname).filter((f) => f.endsWith('.js') && f !== 'index.js').map((f) => require(path.join(__dirname, f)));
 files.sort((a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99));

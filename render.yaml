@@ -1,7 +1,7 @@
 # One-click deploy on Render (free tier). Render reads this file when you create a Blueprint from the repo.
 services:
   - type: web
-    name: chinwag
+    name: smarter-than-the-family
     runtime: node
     plan: free
     buildCommand: npm ci --omit=dev

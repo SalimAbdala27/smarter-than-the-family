@@ -8,7 +8,7 @@ const { Server } = require('socket.io');
 const { RoomManager } = require('./rooms');
 
 const PORT = Number(process.env.PORT) || 3000;
-const PUBLIC_URL = process.env.PUBLIC_URL || ''; // e.g. https://chinwag.example.com when deployed
+const PUBLIC_URL = process.env.PUBLIC_URL || ''; // e.g. https://family.example.com when deployed
 
 const app = express();
 const server = http.createServer(app);
@@ -32,7 +32,7 @@ function joinBase(req) {
   return `${proto}://${host}`;
 }
 
-const PICTURES_DIR = process.env.CHINWAG_PICTURES_DIR || path.join(__dirname, '..', 'public', 'pictures');
+const PICTURES_DIR = process.env.FAMILY_PICTURES_DIR || path.join(__dirname, '..', 'public', 'pictures');
 app.use('/pictures', express.static(PICTURES_DIR));
 app.use(express.static(path.join(__dirname, '..', 'public'), { extensions: ['html'] }));
 
@@ -146,7 +146,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  Chinwag is running`);
+  console.log(`\n  Are You Smarter Than The Family? is running`);
   console.log(`  Host screen (TV/laptop): http://localhost:${PORT}/host`);
   console.log(`  Phones join at:         ${PUBLIC_URL || `http://${lanAddress()}:${PORT}`}\n`);
 });

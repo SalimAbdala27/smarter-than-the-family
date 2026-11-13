@@ -6,9 +6,9 @@ const fs = require('fs');
 const path = require('path');
 
 const API_KEY = process.env.ANTHROPIC_API_KEY || '';
-const MODEL = process.env.CHINWAG_MODEL || 'claude-haiku-5-5';
-const TIMEOUT_MS = Number(process.env.CHINWAG_AI_TIMEOUT_MS) || 30000;
-const DATA_DIR = process.env.CHINWAG_DATA_DIR || path.join(__dirname, '..', 'data');
+const MODEL = process.env.FAMILY_MODEL || 'claude-haiku-5-5';
+const TIMEOUT_MS = Number(process.env.FAMILY_AI_TIMEOUT_MS) || 30000;
+const DATA_DIR = process.env.FAMILY_DATA_DIR || path.join(__dirname, '..', 'data');
 const GEN_FILE = path.join(DATA_DIR, 'generated.json');
 
 const AUDIENCE = 'The players are a group of friends in their twenties and thirties in the UK. '
