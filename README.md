@@ -20,6 +20,10 @@ It plays out on the TV as a cartoon street scene, and every player has their own
 You can also type your own name for them, like "The Johnsons" or "Accounts Team". Each crew has its own speech-bubble taunts, and anyone caught turns into a ghost.
 This round runs at the end of the Pub Quiz (switch it off in the lobby if you like). Your quiz rank buys a head start of 1–4 steps on a 10-step track. **The Family** 👪 is a computer chaser that starts at the back and gets about 70% of questions right. A right answer moves you 1 step, and the fastest right answer moves 2. If The Family reaches your square, you're caught and out. Reaching HOME scores +2000 if you're first and +1000 after that, and anyone still running when the questions run out gets +500.
 
+## Kids' corner: Colour Lab
+
+There's also a solo game for little ones at **/kids**, linked from the main page and the TV lobby. Kids tap paint pots (red, yellow, blue, white, black) to mix colours in a bowl. The mixing works like real paint, so yellow and blue make green. There are 16 colour challenges with stars and a hint button, plus a free-mixing mode that says the name of each colour out loud. Progress is saved on that device.
+
 ## Run it
 
 ```bash

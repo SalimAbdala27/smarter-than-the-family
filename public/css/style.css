@@ -330,3 +330,4 @@ body.player { min-height: 100dvh; }
 .crew-btn.sel { box-shadow: inset 0 0 0 3px var(--yellow); background: #2e2660; }
 .host-cta { margin-top: 5vh; text-align: center; display: grid; gap: 8px; }
 .host-cta a.btn { text-decoration: none; display: block; }
+.kids-cta { margin-top: 18px; text-decoration: none; background: linear-gradient(90deg, #ff5d73, #ffd23f, #3ddc97, #4cc9f0); color: #1a1433; box-shadow: 0 5px 0 #0006; }

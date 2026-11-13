@@ -53,6 +53,7 @@
         <div class="dim">No room code yet?</div>
         <a class="btn ghost block" href="/host">📺 Host a game</a>
         <div class="dim" style="font-size:.8em;margin-top:6px">Open this on the TV or laptop everyone can see. It shows the room code and a QR code for everyone's phones.</div>
+        <a class="btn block kids-cta" href="/kids">🎨 Kids' corner: Colour Lab</a>
       </div>`);
     const go = async () => {
       const code = $('#code').value.trim().toUpperCase();

@@ -132,7 +132,7 @@
       const r = await action(type, data);
       if (r && r.error) alert(r.error);
     }, () => drawLobby());
-    foot.innerHTML = '<button class="btn small ghost" id="newroom">New room</button>';
+    foot.innerHTML = '<a class="btn small ghost" href="/kids" style="text-decoration:none">🎨 Kids\' corner</a><button class="btn small ghost" id="newroom">New room</button>';
     $('#newroom').onclick = () => { if (confirm('Start a fresh room with a new code?')) newRoom(); };
   }
 
