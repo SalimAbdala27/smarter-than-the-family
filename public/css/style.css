@@ -261,14 +261,14 @@ body.player { min-height: 100dvh; }
 
 /* ---------- The Family ---------- */
 .family { display: block; width: 100%; height: 100%; overflow: visible; }
-.family.stomp .dad, .family.gloat .dad { animation: stomp .5s ease-in-out infinite alternate; }
-.family.stomp .mum, .family.gloat .mum { animation: stomp .5s .17s ease-in-out infinite alternate; }
-.family.stomp .nan, .family.gloat .nan { animation: stomp .5s .33s ease-in-out infinite alternate; }
-.family .pin { transform-origin: 190px 150px; animation: wave 0.6s ease-in-out infinite alternate; }
-.family .bag { transform-origin: 276px 176px; animation: wave 0.8s ease-in-out infinite alternate; }
-.family.gloat .pin { animation-duration: .25s; }
+.family.stomp .c1, .family.gloat .c1 { animation: stomp .5s ease-in-out infinite alternate; }
+.family.stomp .c2, .family.gloat .c2 { animation: stomp .5s .17s ease-in-out infinite alternate; }
+.family.stomp .c3, .family.gloat .c3 { animation: stomp .5s .33s ease-in-out infinite alternate; }
+.family .prop2 { transform-origin: 190px 150px; animation: wave 0.6s ease-in-out infinite alternate; }
+.family .prop3 { transform-origin: 276px 176px; animation: wave 0.8s ease-in-out infinite alternate; }
+.family.gloat .prop2 { animation-duration: .25s; }
 .family.sulk { filter: saturate(.6); }
-.family.sulk .dad, .family.sulk .mum, .family.sulk .nan { animation: none; }
+.family.sulk .c1, .family.sulk .c2, .family.sulk .c3 { animation: none; }
 @keyframes stomp { from { transform: translateY(0); } to { transform: translateY(-7px); } }
 @keyframes wave { from { transform: rotate(-12deg); } to { transform: rotate(14deg); } }
 
@@ -321,3 +321,10 @@ body.player { min-height: 100dvh; }
 .phone .road-mini .m { position: absolute; top: 4px; width: 34px; height: 44px; transform: translateX(-50%); transition: left .8s; }
 .phone .road-mini .fam { position: absolute; top: 2px; width: 50px; height: 48px; transform: translateX(-80%); transition: left .8s; }
 .phone .road-mini .door { position: absolute; right: 6px; top: 8px; font-size: 26px; }
+
+/* chaser crew picker */
+.crew-pick { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 2px dashed var(--line); }
+.crew-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.crew-btn { background: var(--bg2); border-radius: 14px; padding: 8px 6px; box-shadow: inset 0 0 0 3px var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 700; font-size: .8em; }
+.crew-btn .art { width: 100%; height: 3.6em; display: block; }
+.crew-btn.sel { box-shadow: inset 0 0 0 3px var(--yellow); background: #2e2660; }

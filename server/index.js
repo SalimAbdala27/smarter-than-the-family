@@ -100,6 +100,7 @@ io.on('connection', (socket) => {
   function roomControl(type, data = {}, fromHost) {
     if (type === 'start') return room.startGame(data.gameId, data.options || {});
     if (type === 'lobby') return room.endGame();
+    if (type === 'crew') return room.setCrew(data);
     if (type === 'kick' && fromHost) return room.removePlayer(data.playerId);
     return null;
   }

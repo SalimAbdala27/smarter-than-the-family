@@ -56,6 +56,8 @@
     const s = state;
     const g = s.game;
     cue(g);
+    $('.host-top .logo').innerHTML = `ARE YOU <b>SMARTER</b> THAN <b>${esc(s.crew.name.toUpperCase())}?</b>`;
+    document.title = `Are You Smarter Than ${s.crew.name}?`;
     topRight.innerHTML = `
       <button class="btn small ghost" id="snd">${sound ? '🔊' : '🔇'}</button>
       ${g ? `<span class="code-badge">Join at ${esc((joinInfo.base || '').replace(/^https?:\/\//, ''))} · <b>${s.code}</b></span>` : ''}`;
@@ -253,7 +255,7 @@
       render(main, `<div class="chase-layout" data-layout="chase-${mode}"><div id="chaseTop"></div><div id="stageHolder"></div><div id="chaseBottom"></div></div>`);
     }
     const holder = $('#stageHolder');
-    stage.attach(holder, `${state.code}|${t.runners.map((r) => r.id + r.start).join(',')}`, t);
+    stage.attach(holder, `${state.code}|${state.crew.id}|${t.runners.map((r) => r.id + r.start).join(',')}`, t, state.crew.id);
     holder.firstChild.style.height = mode === 'over' ? '38vh' : '';
     const top = $('#chaseTop');
     const bottom = $('#chaseBottom');
@@ -261,7 +263,7 @@
 
     if (g.screen === 'chaseIntro') {
       top.innerHTML = `${timerBar()}<div class="banner pop" style="font-size:2.6em">THE FINAL CHASE</div>
-        <p class="center" style="margin:.6vh auto 0;max-width:40em">Your quiz score bought you a head start. Get answers right to run for <b>HOME</b>, and the fastest right answer moves <b>2</b>. If <b>The Family</b> catches you, you're out. First one home wins <b>+2000</b>.</p>`;
+        <p class="center" style="margin:.6vh auto 0;max-width:40em">Your quiz score bought you a head start. Get answers right to run for <b>HOME</b>, and the fastest right answer moves <b>2</b>. If <b>${esc(state.crew.name)}</b> catch you, you're out. First one home wins <b>+2000</b>.</p>`;
       stage.intro(t);
     } else if (g.screen === 'chaseQ' || g.screen === 'chaseReveal') {
       const reveal = g.screen === 'chaseReveal';
@@ -275,7 +277,7 @@
       if (reveal) stage.reveal(t, c.log, c.n); else stage.question(t);
     } else {
       const home = t.runners.filter((r) => r.status === 'home').sort((a, b) => a.order - b.order);
-      const headline = home.length ? `${esc(home[0].name)} ESCAPED FIRST!` : t.runners.some((r) => r.status === 'survived') ? 'SOME OF YOU SURVIVED!' : 'THE FAMILY CAUGHT EVERYONE';
+      const headline = home.length ? `${esc(home[0].name)} ESCAPED FIRST!` : t.runners.some((r) => r.status === 'survived') ? 'SOME OF YOU SURVIVED!' : `${esc(state.crew.name.toUpperCase())} CAUGHT EVERYONE`;
       top.innerHTML = `<div class="banner pop" style="font-size:2.4em">${headline}</div>`;
       const topScore = g.scores[0];
       bottom.innerHTML = `<div class="row" style="justify-content:center;gap:3vw;margin-top:1vh;align-items:center">

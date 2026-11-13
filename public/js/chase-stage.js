@@ -1,15 +1,33 @@
 /* The Final Chase street scene on the TV. The DOM is kept between state updates so characters
    actually run between squares instead of teleporting. */
 (function () {
-  const { esc, avatar, family } = window.CW;
+  const { esc, avatar } = window.CW;
 
   const TAUNTS = {
-    intro: ["Right, you lot. Tea's on the table in ten minutes.", "Nobody's leaving until the washing up's done!", "Your Nan's been revising. Run."],
-    right: ['Nan knew that one!', 'Even Uncle Dave got that.', 'Easy. Pass the gravy.', "Your dad and I are very disappointed.", 'Back in my day we knew that.', "That's on the Christmas quiz every year!"],
-    wrong: ["Hmm. I'll blame the telly.", 'Who moved my reading glasses?', 'That one was rigged!', "We'll have a word about that later.", 'Nan says that was a trick question.'],
-    caught: ["GOTCHA! You're grounded!", 'Caught you! Now hoover the stairs.', 'In you come. Wash your hands.', "Got you! You're doing the big shop."],
-    home: ['Fine. Text us when you get in.', 'Go on then. Take a coat.', 'Hmph. Lucky guess.'],
-    allCaught: ["Right, everyone's in. Tea's ready!", 'Nobody outruns this family.'],
+    family: {
+      intro: ["Right, you lot. Tea's on the table in ten minutes.", "Nobody's leaving until the washing up's done!", "Your Nan's been revising. Run."],
+      right: ['Nan knew that one!', 'Even Uncle Dave got that.', 'Easy. Pass the gravy.', 'Your dad and I are very disappointed.', 'Back in my day we knew that.', "That's on the Christmas quiz every year!"],
+      wrong: ["Hmm. I'll blame the telly.", 'Who moved my reading glasses?', 'That one was rigged!', "We'll have a word about that later.", 'Nan says that was a trick question.'],
+      caught: ["GOTCHA! You're grounded!", 'Caught you! Now hoover the stairs.', 'In you come. Wash your hands.', "Got you! You're doing the big shop."],
+      home: ['Fine. Text us when you get in.', 'Go on then. Take a coat.', 'Hmph. Lucky guess.'],
+      allCaught: ["Right, everyone's in. Tea's ready!", 'Nobody outruns this family.'],
+    },
+    mates: {
+      intro: ['The Group Chat has entered the chat.', "Left you on read. Now we're coming for you.", 'Loser buys the next round.'],
+      right: ['Easy. Screenshot that.', 'Imagine not knowing that 💀', 'Even Big Dave knew that.', 'Sending that to the chat.', 'Pub quiz champions, us.'],
+      wrong: ['Nah, that was a stitch-up.', "Phone died. Doesn't count.", "We were talking, didn't hear it.", 'Delete that from the chat.'],
+      caught: ["Gotcha! You're on the next round.", "Caught! Group chat's been told.", "Got you. Kebab's on you.", 'Removed from the chat 👋'],
+      home: ['Fine. You can stay in the chat.', "Lucky. We'll get you next time.", "Text when you're home, yeah?"],
+      allCaught: ["Everyone's caught. Next round's on you lot.", 'Undefeated. Put it in the chat.'],
+    },
+    knowalls: {
+      intro: ["We've revised. Have you?", 'Prepare to be corrected.', "Actually, we're quite fast."],
+      right: ["Actually, that's common knowledge.", 'I read about that on Wikipedia.', 'Elementary.', 'Technically correct. The best kind.', 'Shall I explain why?'],
+      wrong: ['That question was badly worded.', "I'm appealing that one.", 'Well, it depends how you define it.', 'The source is clearly wrong.'],
+      caught: ['Caught! Shall I explain where you went wrong?', 'Gotcha. See me after class.', 'Caught. Show your working next time.', 'Detention!'],
+      home: ['Fine. Extra credit to you.', 'Hmm. A lucky guess, statistically.', 'Acceptable.'],
+      allCaught: ['As predicted. Class dismissed.', 'Knowledge wins again.'],
+    },
   };
   const pick = (list, n) => list[Math.abs(n) % list.length];
 
@@ -59,8 +77,8 @@
     later(ms, fn) { this.timers.push(setTimeout(fn, ms)); }
     clearTimers() { this.timers.forEach(clearTimeout); this.timers = []; }
 
-    attach(holder, key, track) {
-      if (!this.el || this.key !== key) this.build(key, track);
+    attach(holder, key, track, crewId) {
+      if (!this.el || this.key !== key) { this.crewId = crewId; this.build(key, track); }
       if (this.el.parentNode !== holder) holder.appendChild(this.el);
     }
 
@@ -95,6 +113,8 @@
       this.L = L;
     }
 
+    get taunts() { return TAUNTS[this.crewId] || TAUNTS.family; }
+
     runnerEl(id) { return this.el.querySelector(`.runner[data-id="${CSS.escape(id)}"]`); }
 
     setMood(id, r, mood) {
@@ -108,7 +128,7 @@
       const w = this.el.querySelector('.famsvg');
       if (w.dataset.mood === mood) return;
       w.dataset.mood = mood;
-      w.innerHTML = family(mood);
+      w.innerHTML = window.CW.crew(this.crewId, mood);
     }
 
     say(text) {
@@ -163,7 +183,7 @@
       wrap.classList.remove('enter'); void wrap.offsetWidth; wrap.classList.add('enter');
       this.setFamily('stomp');
       track.runners.forEach((r) => this.setMood(r.id, r, 'scared'));
-      this.later(2000, () => this.say(pick(TAUNTS.intro, track.runners.length)));
+      this.later(2000, () => this.say(pick(this.taunts.intro, track.runners.length)));
       this.later(4200, () => track.runners.forEach((r) => this.setMood(r.id, r, this.restingMood(r, track.family))));
     }
 
@@ -205,17 +225,17 @@
         if (log.familyRight) {
           this.setFamily('stomp');
           this.placeFamily(track.family);
-          this.say(pick(TAUNTS.right, n));
+          this.say(pick(this.taunts.right, n));
         } else {
           this.setFamily('sulk');
-          this.say(pick(TAUNTS.wrong, n));
+          this.say(pick(this.taunts.wrong, n));
         }
       });
 
       this.later(3100, () => {
         if (log.caught.length) {
           this.setFamily('gloat');
-          this.say(pick(TAUNTS.caught, n));
+          this.say(pick(this.taunts.caught, n));
           this.el.classList.remove('shake'); void this.el.offsetWidth; this.el.classList.add('shake');
           log.caught.forEach((id) => {
             const r = byId[id];
@@ -227,7 +247,7 @@
             this.runnerEl(id).appendChild(st);
           });
         } else if (track.runners.some((r) => r.moved && r.status === 'home')) {
-          this.say(pick(TAUNTS.home, n));
+          this.say(pick(this.taunts.home, n));
         }
         track.runners.filter((r) => r.status === 'running').forEach((r) => this.setMood(r.id, r, this.restingMood(r, track.family)));
         this.state = JSON.parse(JSON.stringify(track));
@@ -241,7 +261,7 @@
       this.snap(track);
       const anyHome = track.runners.some((r) => r.status === 'home' || r.status === 'survived');
       this.setFamily(anyHome ? 'sulk' : 'gloat');
-      this.say(anyHome ? pick(TAUNTS.home, 1) : pick(TAUNTS.allCaught, track.runners.length));
+      this.say(anyHome ? pick(this.taunts.home, 1) : pick(this.taunts.allCaught, track.runners.length));
       if (anyHome) this.confetti();
     }
 

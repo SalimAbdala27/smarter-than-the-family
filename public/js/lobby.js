@@ -23,7 +23,16 @@
       opts += `<div class="opts"><button class="toggle ${o.fresh ? 'on' : ''}" data-fresh="1">✨ Fresh content from Claude</button></div>`;
     }
     const need = g.minPlayers;
-    return `
+    const crewPick = `
+      <div class="crew-pick">
+        <div class="row" style="margin-bottom:8px"><b>Who's chasing tonight?</b><span class="dim" style="font-size:.8em">Also sets the title</span></div>
+        <div class="crew-opts">${state.crews.map((c) => `
+          <button class="crew-btn ${state.crew.id === c.id ? 'sel' : ''}" data-crew="${c.id}">
+            <span class="art">${window.CW.crew(c.id, state.crew.id === c.id ? 'stomp' : 'sulk')}</span><span>${esc(c.name)}</span>
+          </button>`).join('')}</div>
+        <input class="field" data-key="crewname" id="crewName" maxlength="24" style="margin-top:8px;font-size:.95em;padding:10px 14px" placeholder="Or name them, e.g. The Johnsons" value="${esc(state.crew.name !== state.crew.defaultName ? state.crew.name : '')}">
+      </div>`;
+    return `${crewPick}
       <div class="games">
         ${games.map((x) => `
           <button class="game-card ${x.id === pick.gameId ? 'sel' : ''}" data-game="${x.id}">
@@ -51,6 +60,12 @@
     root.querySelectorAll('[data-fresh]').forEach((b) => b.addEventListener('click', () => { pick.options.fresh = !pick.options.fresh; rerender(); }));
     const ct = root.querySelector('#customTopic');
     if (ct) ct.addEventListener('input', () => { pick.options.custom = ct.value; });
+    root.querySelectorAll('[data-crew]').forEach((b) => b.addEventListener('click', () => send('crew', { id: b.dataset.crew, name: '' })));
+    const cn = root.querySelector('#crewName');
+    if (cn) {
+      cn.addEventListener('change', () => send('crew', { name: cn.value }));
+      cn.addEventListener('keydown', (e) => { if (e.key === 'Enter') cn.blur(); });
+    }
     const st = root.querySelector('[data-start]');
     if (st) st.addEventListener('click', () => send('start', { gameId: pick.gameId, options: { ...pick.options, custom: pick.options.custom.trim() } }));
   }

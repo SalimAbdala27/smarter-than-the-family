@@ -9,6 +9,12 @@ const COLOURS = ['#ff5d73', '#ffb627', '#3ddc97', '#4cc9f0', '#b388ff', '#ff8fab
 const MAX_PLAYERS = 10;
 const MAX_NAME = 14;
 const IDLE_ROOM_MS = 45 * 60 * 1000;
+// Who chases you in the Final Chase. Also sets the title: "Are You Smarter Than <name>?"
+const CREWS = {
+  family: 'The Family',
+  mates: 'The Group Chat',
+  knowalls: 'The Know-It-Alls',
+};
 
 const token = () => crypto.randomBytes(16).toString('hex');
 const cleanName = (n) => String(n || '').replace(/\s+/g, ' ').trim().slice(0, MAX_NAME).toUpperCase();
@@ -25,6 +31,7 @@ class Room {
     this.history = {}; // per game type: used content ids so you don't see repeats
     this.lastActivity = Date.now();
     this._pending = false;
+    this.crew = { id: 'family', name: '' };
   }
 
   get connectedPlayers() { return this.players.filter((p) => p.connected); }
@@ -68,6 +75,20 @@ class Room {
     if (this.game && this.game.onPlayerRemoved) this.game.onPlayerRemoved(p);
   }
 
+  setCrew(d = {}) {
+    if (CREWS[d.id]) this.crew.id = d.id;
+    if (d.name !== undefined) {
+      let n = String(d.name || '').replace(/\s+/g, ' ').trim().replace(/\?+$/, '').slice(0, 24);
+      const plural = /s$/i.test(n);
+      if (n && plural && !/^the\s/i.test(n)) n = `The ${n}`; // "Johnsons" → "The Johnsons"
+      if (/^the\s/.test(n)) n = `T${n.slice(1)}`;
+      this.crew.name = n;
+    }
+    return { ok: true };
+  }
+
+  get crewView() { return { id: this.crew.id, name: this.crew.name || CREWS[this.crew.id], defaultName: CREWS[this.crew.id] }; }
+
   startGame(gameId, options = {}) {
     const Game = GAMES[gameId];
     if (!Game) return { error: 'Unknown game' };
@@ -110,6 +131,8 @@ class Room {
       games: Object.values(GAMES).map((G) => G.meta),
       lastGameId: this.lastGameId,
       ai: ai.enabled(),
+      crew: this.crewView,
+      crews: Object.entries(CREWS).map(([id, name]) => ({ id, name })),
       now: Date.now(),
     };
   }
