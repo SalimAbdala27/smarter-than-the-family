@@ -328,3 +328,5 @@ body.player { min-height: 100dvh; }
 .crew-btn { background: var(--bg2); border-radius: 14px; padding: 8px 6px; box-shadow: inset 0 0 0 3px var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 700; font-size: .8em; }
 .crew-btn .art { width: 100%; height: 3.6em; display: block; }
 .crew-btn.sel { box-shadow: inset 0 0 0 3px var(--yellow); background: #2e2660; }
+.host-cta { margin-top: 5vh; text-align: center; display: grid; gap: 8px; }
+.host-cta a.btn { text-decoration: none; display: block; }

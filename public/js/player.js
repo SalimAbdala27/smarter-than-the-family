@@ -48,6 +48,11 @@
         <input class="field" data-key="code" id="code" maxlength="4" autocomplete="off" autocapitalize="characters" placeholder="ROOM CODE" style="text-align:center;letter-spacing:.3em;font-family:var(--display);text-transform:uppercase" value="${esc(params.get('code') || '')}">
         <input class="field" data-key="name" id="name" maxlength="14" autocomplete="nickname" placeholder="YOUR NAME" style="text-align:center;text-transform:uppercase" value="${esc((s && s.name) || '')}">
         <button class="btn block" id="join">Join</button>
+      </div>
+      <div class="host-cta">
+        <div class="dim">No room code yet?</div>
+        <a class="btn ghost block" href="/host">📺 Host a game</a>
+        <div class="dim" style="font-size:.8em;margin-top:6px">Open this on the TV or laptop everyone can see. It shows the room code and a QR code for everyone's phones.</div>
       </div>`);
     const go = async () => {
       const code = $('#code').value.trim().toUpperCase();
