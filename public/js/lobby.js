@@ -11,8 +11,8 @@
     const o = pick.options;
     let opts = '';
     if (g.id === 'pubquiz') {
-      opts += `<div class="opts">${g.categories.map((c) => `<button class="toggle ${o.categories.includes(c.id) ? 'on' : ''}" data-cat="${c.id}">${c.emoji} ${esc(c.name)}</button>`).join('')}</div>
-        <div class="opts dim" style="font-size:.85em">${o.categories.length ? '' : 'No genres picked = a bit of everything'}</div>
+      opts += `<div class="opts"><button class="toggle ${o.categories.length ? '' : 'on'}" data-mix="1">🎲 Mix of everything</button>${g.categories.map((c) => `<button class="toggle ${o.categories.includes(c.id) ? 'on' : ''}" data-cat="${c.id}">${c.emoji} ${esc(c.name)}</button>`).join('')}</div>
+        <div class="opts dim" style="font-size:.85em">${o.categories.length ? `Just ${o.categories.length} genre${o.categories.length > 1 ? 's' : ''}. Tap 🎲 to go back to a mix of everything.` : 'A question from every genre, or tap genres to choose your own'}</div>
         <div class="opts"><button class="toggle ${o.chase ? 'on' : ''}" data-chase="1">🏃 Final Chase at the end</button></div>
         <div class="opts">${[10, 15, 20, 30].map((c) => `<button class="toggle ${o.count === c ? 'on' : ''}" data-count="${c}">${c} questions</button>`).join('')}</div>`;
       if (state.ai) {
@@ -55,6 +55,7 @@
       pick.options.categories = cs.includes(c) ? cs.filter((x) => x !== c) : cs.concat(c);
       rerender();
     }));
+    root.querySelectorAll('[data-mix]').forEach((b) => b.addEventListener('click', () => { pick.options.categories = []; rerender(); }));
     root.querySelectorAll('[data-count]').forEach((b) => b.addEventListener('click', () => { pick.options.count = Number(b.dataset.count); rerender(); }));
     root.querySelectorAll('[data-chase]').forEach((b) => b.addEventListener('click', () => { pick.options.chase = !pick.options.chase; rerender(); }));
     root.querySelectorAll('[data-fresh]').forEach((b) => b.addEventListener('click', () => { pick.options.fresh = !pick.options.fresh; rerender(); }));
