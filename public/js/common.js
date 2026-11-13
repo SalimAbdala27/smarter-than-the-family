@@ -45,7 +45,7 @@
     return `<div class="board">${scores.map((s, i) => `
       <div class="rowp rise" style="animation-delay:${i * 70}ms">
         <span class="rk">${i + 1}</span>
-        <span style="color:${s.colour}">●</span> ${esc(s.name)}
+        ${window.CW.avatar ? `<span class="mini">${window.CW.avatar(s, i === 0 ? 'happy' : 'idle')}</span>` : `<span style="color:${s.colour}">●</span>`} ${esc(s.name)}
         <span class="sc">${s.score}</span>
       </div>`).join('')}</div>`;
   }

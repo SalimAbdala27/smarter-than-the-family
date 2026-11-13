@@ -9,6 +9,7 @@ Jackbox-style party games for a UK crowd. One screen (TV or laptop) shows the ga
 | **Pub Quiz** | 1–10 | 449 built-in questions in 15 genres, plus a picture round from your own photos. It mixes multiple choice with typed answers, and faster answers score more. It ends with **The Final Chase**. |
 
 ### The Final Chase
+It plays out on the TV as a cartoon street scene. Every player has their own character, and The Family (Dad, Mum and Nan) stomp after you with speech-bubble taunts. Anyone caught turns into a ghost.
 This round runs at the end of the Pub Quiz (switch it off in the lobby if you like). Your quiz rank buys a head start of 1–4 steps on a 10-step track. **The Family** 👪 is a computer chaser that starts at the back and gets about 70% of questions right. A right answer moves you 1 step, and the fastest right answer moves 2. If The Family reaches your square, you're caught and out. Reaching HOME scores +2000 if you're first and +1000 after that, and anyone still running when the questions run out gets +500.
 
 ## Run it

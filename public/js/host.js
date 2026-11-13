@@ -62,6 +62,11 @@
     $('#snd').onclick = () => { sound = !sound; localStorage.setItem('cwSound', sound ? 'on' : 'off'); if (sound) beep(660); draw(); };
 
     if (!g) return drawLobby();
+    if (g.id === 'pubquiz' && g.chase && (g.screen.startsWith('chase') || g.screen === 'over')) {
+      drawChase(g);
+      runTimers(main, g.deadline);
+      return drawFoot(g);
+    }
     const fn = VIEWS[g.id] && VIEWS[g.id][g.screen];
     if (g.screen === 'loading') render(main, `<div class="center"><div class="big-q wobble">✍️</div><p class="kicker" style="margin-top:3vh">${esc(g.loadingLabel || 'Loading…')}</p></div>`);
     else if (fn) render(main, fn(g, s));
@@ -94,8 +99,9 @@
   function drawLobby() {
     const s = state;
     const players = s.players.map((p) => `
-      <span class="chip pop ${p.connected ? '' : 'off'}">
-        <span class="dot" style="background:${p.colour}">${esc(p.name[0])}</span>${esc(p.name)}${p.id === s.vipId ? ' 👑' : ''}
+      <span class="avatar-chip pop ${p.connected ? '' : 'off'}">
+        <span class="pic">${window.CW.avatar(p, 'idle')}</span>
+        <span class="nm">${esc(p.name)}${p.id === s.vipId ? ' 👑' : ''}</span>
         <button class="x" data-kick="${p.id}" title="Remove">×</button>
       </span>`).join('');
     render(main, `
@@ -110,7 +116,7 @@
         <div class="stack">
           <div class="card">
             <div class="row" style="margin-bottom:12px"><b>Players (${s.players.length}/10)</b><span class="grow"></span><span class="dim" style="font-size:.8em">👑 = VIP, can start from their phone</span></div>
-            <div class="players-grid">${players || '<span class="dim">Waiting for people to join…</span>'}</div>
+            <div class="players-grid" style="gap:14px">${players || '<span class="dim">Waiting for people to join…</span>'}</div>
           </div>
           <div class="card" id="picker">${window.CW.lobby.html(s)}</div>
         </div>
@@ -188,14 +194,7 @@
       question: (g) => `${timerBar()}${quizBody(g, false)}`,
       reveal: (g) => quizBody(g, true),
       board: (g) => `<div class="banner">LEADERBOARD</div><p class="center dim">${g.n} of ${g.of} done</p>${scoreboard(g.scores)}`,
-      chaseIntro: (g) => `${timerBar()}
-        <div class="banner pop">THE FINAL CHASE</div>
-        <p class="center" style="font-size:1.25em;max-width:36em;margin:1vh auto 3vh">Your quiz score bought you a head start. <b>${FAMILY}</b> is coming for you.
-        Right answers move you forward (fastest moves <b>2</b>). Get caught and you're out. First one <b>HOME</b> wins <b>+2000</b>.</p>
-        ${track(g.chase.track)}`,
-      chaseQ: (g) => `${timerBar()}${chaseQuestion(g, false)}`,
-      chaseReveal: (g) => chaseQuestion(g, true),
-      over: (g) => (g.chase ? chaseOver(g) : winner(g.scores)),
+      over: (g) => winner(g.scores),
     },
   };
 
@@ -244,54 +243,48 @@
   }
 
   // ---------- Final Chase ----------
-  const FAMILY = 'The Family';
-  const FAMILY_ICON = '👪';
-  function track(t, compact) {
-    const lane = (r) => {
-      const cells = [];
-      for (let i = 0; i <= t.length; i++) {
-        const here = r.pos === i && r.status !== 'caught';
-        const fam = t.family === i && r.status !== 'home';
-        cells.push(`<div class="cell ${i === t.length ? 'home' : ''} ${i < t.family ? 'gone' : ''}">
-          ${fam ? `<span class="fam ${r.status === 'caught' ? 'got' : ''}">${FAMILY_ICON}</span>` : ''}
-          ${here ? `<span class="tok pop" style="background:${r.colour}">${esc(r.name[0])}${r.moved ? `<i>+${r.moved}</i>` : ''}</span>` : ''}
-          ${i === t.length && !here ? '🏠' : ''}
-        </div>`);
-      }
-      const tag = r.status === 'caught' ? '<b class="st caught">CAUGHT</b>' : r.status === 'home' ? `<b class="st home">${r.order === 0 ? '1ST HOME!' : 'HOME'}</b>` : r.status === 'survived' ? '<b class="st home">SURVIVED</b>' : `<span class="st dim">${r.pos - t.family} ahead</span>`;
-      return `<div class="lane ${r.status}"><div class="who"><span class="dot" style="background:${r.colour}"></span>${esc(r.name)}</div><div class="cells">${cells.join('')}</div>${tag}</div>`;
-    };
-    return `<div class="track ${compact ? 'compact' : ''}">${t.runners.map(lane).join('')}</div>`;
-  }
+  const stage = new window.CW.ChaseStage();
 
-  function chaseQuestion(g, reveal) {
+  function drawChase(g) {
     const c = g.chase;
-    const q = c.question;
-    let line = '';
-    if (reveal) {
-      const caught = c.track.runners.filter((r) => c.log.caught.includes(r.id)).map((r) => esc(r.name));
-      line = `<div class="banner pop" style="font-size:1.6em">${FAMILY} got it ${c.log.familyRight ? 'RIGHT ✓ and moves closer' : 'WRONG ✗ and stays put'}${caught.length ? ` · CAUGHT: ${caught.join(', ')}!` : ''}</div>`;
+    const t = c.track;
+    const mode = g.screen === 'over' ? 'over' : 'play';
+    if (!main.querySelector(`[data-layout="chase-${mode}"]`)) {
+      render(main, `<div class="chase-layout" data-layout="chase-${mode}"><div id="chaseTop"></div><div id="stageHolder"></div><div id="chaseBottom"></div></div>`);
     }
-    return `<div class="kicker">THE FINAL CHASE · QUESTION ${c.n}</div>
-      <div class="big-q" style="margin-top:1vh;font-size:2.1em">${esc(q.q)}</div>
-      <div class="answers4" style="margin-top:2.5vh">${q.options.map((o, i) => `
-        <div class="ans ans-${i} ${reveal ? (i === c.correct ? 'right' : 'wrong') : ''}" style="padding:.6em 1em;font-size:1.25em"><span class="sh">${SHAPES[i]}</span>${esc(o)}</div>`).join('')}</div>
-      <div style="margin-top:2vh;min-height:2.4em">${line}</div>
-      ${track(c.track, true)}`;
-  }
+    const holder = $('#stageHolder');
+    stage.attach(holder, `${state.code}|${t.runners.map((r) => r.id + r.start).join(',')}`, t);
+    holder.firstChild.style.height = mode === 'over' ? '38vh' : '';
+    const top = $('#chaseTop');
+    const bottom = $('#chaseBottom');
+    bottom.innerHTML = '';
 
-  function chaseOver(g) {
-    const t = g.chase.track;
-    const home = t.runners.filter((r) => r.status === 'home').sort((a, b) => a.order - b.order);
-    const headline = home.length ? `${esc(home[0].name)} ESCAPED FIRST!` : t.runners.some((r) => r.status === 'survived') ? 'SOME OF YOU SURVIVED' : `${FAMILY.toUpperCase()} CAUGHT EVERYONE`;
-    const top = g.scores[0];
-    return `<div class="center">
-      <div class="kicker">THE FINAL CHASE</div>
-      <div class="banner pop">${headline}</div>
-      ${track(t, true)}
-      <div class="kicker" style="margin-top:3vh">AND THE WINNER IS…</div>
-      <div class="banner pop" style="font-size:3.2em;color:${top ? top.colour : 'var(--yellow)'}">${top ? esc(top.name) : '—'}</div>
-      ${scoreboard(g.scores)}</div>`;
+    if (g.screen === 'chaseIntro') {
+      top.innerHTML = `${timerBar()}<div class="banner pop" style="font-size:2.6em">THE FINAL CHASE</div>
+        <p class="center" style="margin:.6vh auto 0;max-width:40em">Your quiz score bought you a head start. Get answers right to run for <b>HOME</b>, and the fastest right answer moves <b>2</b>. If <b>The Family</b> catches you, you're out. First one home wins <b>+2000</b>.</p>`;
+      stage.intro(t);
+    } else if (g.screen === 'chaseQ' || g.screen === 'chaseReveal') {
+      const reveal = g.screen === 'chaseReveal';
+      const q = c.question;
+      const answered = t.runners.filter((r) => c.answered && c.answered.includes(r.id)).length;
+      const runningN = t.runners.filter((r) => r.status === 'running').length;
+      top.innerHTML = `${reveal ? '' : timerBar()}
+        <div class="kicker">THE FINAL CHASE · QUESTION ${c.n}${reveal ? '' : ` · ${answered}/${runningN} ANSWERED`}</div>
+        <div class="big-q" style="font-size:2em;margin-top:.6vh">${esc(q.q)}</div>
+        <div class="chase-answers">${q.options.map((o, i) => `<div class="ans ans-${i} ${reveal ? (i === c.correct ? 'right' : 'wrong') : ''}"><span class="sh">${SHAPES[i]}</span>${esc(o)}</div>`).join('')}</div>`;
+      if (reveal) stage.reveal(t, c.log, c.n); else stage.question(t);
+    } else {
+      const home = t.runners.filter((r) => r.status === 'home').sort((a, b) => a.order - b.order);
+      const headline = home.length ? `${esc(home[0].name)} ESCAPED FIRST!` : t.runners.some((r) => r.status === 'survived') ? 'SOME OF YOU SURVIVED!' : 'THE FAMILY CAUGHT EVERYONE';
+      top.innerHTML = `<div class="banner pop" style="font-size:2.4em">${headline}</div>`;
+      const topScore = g.scores[0];
+      bottom.innerHTML = `<div class="row" style="justify-content:center;gap:3vw;margin-top:1vh;align-items:center">
+          <div style="width:7em;height:7.7em">${topScore ? window.CW.avatar(topScore, 'happy') : ''}</div>
+          <div><div class="kicker" style="text-align:left">AND THE WINNER IS…</div>
+          <div class="banner pop" style="font-size:3em;text-align:left;color:${topScore ? topScore.colour : 'var(--yellow)'}">${topScore ? esc(topScore.name) : '—'}</div></div>
+        </div>${scoreboard(g.scores)}`;
+      stage.finale(t);
+    }
   }
 
   function battle(b, reveal) {

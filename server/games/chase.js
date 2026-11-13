@@ -7,7 +7,7 @@
 const TRACK = 10; // steps to HOME
 const MAX_HEAD_START = 4;
 const Q_MS = 12000;
-const REVEAL_MS = 5500;
+const REVEAL_MS = 7000; // long enough for the run / chase / catch animation
 const INTRO_MS = 10000;
 const FAMILY_ACCURACY = 0.7; // tweak to make The Family harder or easier
 const BONUS_FIRST = 2000;

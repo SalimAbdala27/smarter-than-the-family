@@ -73,7 +73,7 @@
     if (!state || !state.me) return;
     const { me } = state;
     const g = state.game;
-    top.innerHTML = `<span class="me"><i style="background:${me.colour}"></i>${esc(me.name)}${me.isVIP ? ' 👑' : ''}</span>
+    top.innerHTML = `<span class="me"><span class="face">${window.CW.avatar(me, 'idle')}</span>${esc(me.name)}${me.isVIP ? ' 👑' : ''}</span>
       <span class="dim" style="font-size:.85em">${state.code}</span><span class="score">${me.score}</span>`;
 
     // Buzz on a new phase so people look down at their phones.
@@ -94,13 +94,13 @@
   const timer = () => '<div class="timer" data-timer style="margin-bottom:14px"><i></i></div>';
 
   function lobby() {
-    const others = state.players.map((p) => `<span class="chip ${p.connected ? '' : 'off'}" style="padding:6px 12px 6px 6px"><span class="dot" style="background:${p.colour};width:22px;height:22px">${esc(p.name[0])}</span>${esc(p.name)}</span>`).join(' ');
+    const others = state.players.map((p) => `<span class="avatar-chip ${p.connected ? '' : 'off'}" style="font-size:.8em"><span class="pic">${window.CW.avatar(p, 'idle')}</span><span class="nm">${esc(p.name)}</span></span>`).join(' ');
     if (state.me.isVIP) {
       return `<h1>You're the VIP 👑</h1><p class="dim">Pick a game and start when everyone's in.</p>
         <div class="row" style="gap:6px;margin-bottom:14px">${others}</div>
         <div id="picker">${window.CW.lobby.html(state)}</div>`;
     }
-    return `${wait('🎉', "You're in!", 'Waiting for the VIP to start the game')}<div class="row" style="gap:6px;justify-content:center">${others}</div>`;
+    return `<div class="wait"><div><div style="width:150px;height:165px;margin:0 auto">${window.CW.avatar(state.me, 'happy')}</div><h2 style="margin-top:12px">You're in!</h2><p class="dim">This is you. Waiting for the VIP to start the game.</p></div></div><div class="row" style="gap:6px;justify-content:center">${others}</div>`;
   }
 
   function vipControls(g) {
@@ -197,14 +197,15 @@
       chaseIntro: (g) => {
         const m = g.chase.me;
         return `<h1>The Final Chase</h1>
-          <p>You start <b>${m.start} step${m.start === 1 ? '' : 's'}</b> ahead of <b>The Family</b> 👪. Right answers move you forward, the fastest moves 2. Get caught and you're out. First one home wins <b>+2000</b>.</p>
-          ${miniTrack(g.chase)}`;
+          ${meCard(m, 'scared', `You start <b>${m.start} step${m.start === 1 ? '' : 's'}</b> ahead of The Family.`)}
+          <p>Right answers move you towards HOME, and the fastest right answer moves 2. Get caught and you're out. First one home wins <b>+2000</b>.</p>
+          ${roadMini(g.chase)}`;
       },
       chaseQ: (g) => {
         const c = g.chase;
-        if (!c.question) return `${statusWait(c.me)}${miniTrack(c)}`;
+        if (!c.question) return `${statusCard(c.me)}${roadMini(c)}`;
         const mine = c.myAnswer;
-        return `${timer()}<div class="counter" style="text-align:left">Chase Q${c.n} · The Family is <b>${c.me.gap}</b> behind</div>
+        return `${timer()}<div class="counter" style="text-align:left">Chase Q${c.n} · The Family is <b>${c.me.gap}</b> step${c.me.gap === 1 ? '' : 's'} behind${c.me.gap <= 1 ? ' 😱' : ''}</div>
           <div class="hint-ex" style="margin:0 0 10px;color:var(--ink)">${esc(c.question.q)}</div>
           <div class="quiz-btns">${c.question.options.map((o, i) => `
             <button class="ans-${i} ${mine == null ? '' : (mine === i ? 'mine' : 'faded')}" data-choice="${i}" ${mine == null ? '' : 'disabled'}><span class="sh">${SHAPES[i]}</span>${esc(o)}</button>`).join('')}</div>`;
@@ -213,35 +214,38 @@
         const c = g.chase;
         const m = c.me;
         if (!m) return wait('👀', 'Look at the big screen');
-        let head;
-        if (c.log.caught.includes(state.me.id)) head = wait('😱', 'CAUGHT!', `It was: ${esc(c.answer)}`);
-        else if (m.status === 'home' && m.moved) head = wait('🏠', m.order === 0 ? 'FIRST HOME!' : 'You made it home!', `It was: ${esc(c.answer)}`);
-        else if (m.status !== 'running') head = statusWait(m);
-        else head = wait(m.moved ? '🏃' : '🙈', m.moved ? `Right! +${m.moved} step${m.moved > 1 ? 's' : ''}` : 'Wrong, you stay put', `It was: ${esc(c.answer)} · The Family ${c.log.familyRight ? 'got it right' : 'got it wrong'}`);
-        return head + miniTrack(c);
+        const sub = `It was: <b>${esc(c.answer)}</b><br>The Family ${c.log.familyRight ? 'got it right 😈' : 'got it wrong 😤'}`;
+        let card;
+        if (c.log.caught.includes(state.me.id)) card = meCard(m, 'ghost', `<b style="font-size:1.4em;color:var(--pink)">CAUGHT!</b><br>${sub}`);
+        else if (m.status === 'home' && m.moved) card = meCard(m, 'happy', `<b style="font-size:1.4em;color:var(--yellow)">${m.order === 0 ? 'FIRST HOME!' : 'HOME!'}</b><br>${sub}`);
+        else if (m.status !== 'running') return `${statusCard(m)}${roadMini(c)}`;
+        else card = meCard(m, m.moved ? 'run' : 'scared', `<b style="font-size:1.3em">${m.moved ? `Right! +${m.moved} step${m.moved > 1 ? 's' : ''}` : 'Wrong. You stay put.'}</b><br>${sub}`);
+        return card + roadMini(c);
       },
       over: (g) => `${g.chase && g.chase.me ? `<h2>${{ home: g.chase.me.order === 0 ? '🏠 First home! +2000' : '🏠 Escaped! +1000', survived: '😅 Survived! +500', caught: '😱 Caught by The Family' }[g.chase.me.status] || ''}</h2>` : ''}<h1>Final scores</h1>${scoreboard(g.scores)}`,
     },
   };
 
-  function statusWait(m) {
+  function meCard(m, mood, html) {
+    return `<div class="me-card"><div class="pic">${window.CW.avatar(state.me, mood)}</div><div>${html}</div></div>`;
+  }
+
+  function statusCard(m) {
     if (!m) return wait('👀', 'Look at the big screen');
-    if (m.status === 'caught') return wait('😱', 'You got caught', 'Watch the others run for it!');
-    if (m.status === 'home') return wait('🏠', 'You escaped!', 'Watch the others run for it!');
+    if (m.status === 'caught') return meCard(m, 'ghost', '<b>You got caught 👻</b><br>Watch the others run for it on the big screen!');
+    if (m.status === 'home') return meCard(m, 'happy', '<b>You escaped! 🏠</b><br>Watch the others run for it on the big screen!');
     return wait('👀', 'Look at the big screen');
   }
 
-  function miniTrack(c) {
+  // A tiny version of the TV street: everyone's characters and The Family.
+  function roadMini(c) {
     const t = c.track;
-    return `<div class="track" style="margin-top:16px">${t.runners.map((r) => {
-      let cells = '';
-      for (let i = 0; i <= t.length; i++) {
-        const here = r.pos === i && r.status !== 'caught';
-        const fam = t.family === i && r.status !== 'home';
-        cells += `<div class="cell ${i === t.length ? 'home' : ''} ${i < t.family ? 'gone' : ''}">${fam ? '<span class="fam">👪</span>' : ''}${here ? `<span class="tok" style="background:${r.colour}">${esc(r.name[0])}</span>` : ''}</div>`;
-      }
-      return `<div class="lane ${r.status}"><div class="who" style="font-size:.8em">${esc(r.name)}${r.status === 'caught' ? ' · caught' : r.status === 'home' ? ' · home' : ''}</div><div class="cells">${cells}</div></div>`;
-    }).join('')}</div>`;
+    const x = (i) => 6 + (i * 80) / t.length;
+    return `<div class="road-mini">
+      <span class="door">🚪</span>
+      <span class="fam" style="left:${x(t.family) + 3}%">${window.CW.family('stomp')}</span>
+      ${t.runners.map((r) => `<span class="m" style="left:${r.status === 'home' ? 94 : x(r.pos)}%;${r.id === state.me.id ? 'z-index:3;transform:translateX(-50%) scale(1.25)' : 'opacity:.8'}">${window.CW.avatar(r, r.status === 'caught' ? 'ghost' : r.status === 'home' ? 'happy' : 'idle')}</span>`).join('')}
+    </div>`;
   }
 
   // ---------- events ----------
