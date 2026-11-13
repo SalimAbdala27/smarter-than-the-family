@@ -1,0 +1,14 @@
+# One-click deploy on Render (free tier). Render reads this file when you create a Blueprint from the repo.
+services:
+  - type: web
+    name: chinwag
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ANTHROPIC_API_KEY
+        sync: false   # optional: paste your key in the Render dashboard to switch on Claude content
