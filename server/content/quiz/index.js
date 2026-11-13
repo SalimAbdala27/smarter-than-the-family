@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ORDER = ['geography', 'history', 'science', 'nature', 'sport', 'football', 'music', 'screen',
-  'celebs', 'gaming', 'food', 'britain', 'cars', 'words', 'emoji'];
+  'celebs', 'whoami', 'gaming', 'food', 'britain', 'cars', 'words', 'emoji'];
 const PICTURES_DIR = process.env.FAMILY_PICTURES_DIR || path.join(__dirname, '..', '..', '..', 'public', 'pictures');
 
 const files = fs.readdirSync(__dirname).filter((f) => f.endsWith('.js') && f !== 'index.js').map((f) => require(path.join(__dirname, f)));
@@ -40,7 +40,7 @@ const PIC_PROMPTS = [
   [/flag/i, 'Which country\'s flag is this?'],
   [/car/i, 'Name this car'],
 ];
-const IMG = /\.(jpe?g|png|webp|gif|avif)$/i;
+const IMG = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
 
 function pictureQuestions() {
   const out = [];
@@ -65,7 +65,7 @@ function pictureQuestions() {
 
 function categories() {
   const n = pictureQuestions().length;
-  return n ? CATEGORIES.concat({ id: 'pictures', name: `Picture Round (${n})`, emoji: '🖼️' }) : CATEGORIES.slice();
+  return n ? CATEGORIES.concat({ id: 'pictures', name: 'Flags & Pictures', emoji: '🖼️' }) : CATEGORIES.slice();
 }
 
 function bank(catId) {

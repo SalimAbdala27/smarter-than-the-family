@@ -8,7 +8,7 @@ Jackbox-style party games for a UK crowd. One screen (TV or laptop) shows the ga
 |---|---|---|
 | **Story Time** | 2–10 | Everyone fills in blanks ("a UK town", "a verb ending in -ing") without seeing the story. The finished story is shown line by line and can be read aloud in a British voice. Then everyone votes for the best word. |
 | **Head to Head** | 3–10 | Each prompt goes to two players. Everyone else votes for the funnier answer. Round 2 scores double. The final round is one prompt that everyone answers. |
-| **Pub Quiz** | 1–10 | 449 built-in questions in 15 genres, plus a picture round from your own photos. It mixes multiple choice with typed answers, and faster answers score more. It ends with **The Final Chase**. |
+| **Pub Quiz** | 1–10 | 531 built-in questions in 17 genres, including a *Who Am I?* famous-faces round and a flags picture round. You can add your own photos too. It mixes multiple choice with typed answers, and faster answers score more. It ends with **The Final Chase**. |
 
 ### The Final Chase
 It plays out on the TV as a cartoon street scene, and every player has their own character. In the lobby you pick **who's chasing**, and the title changes to match:
@@ -75,8 +75,8 @@ Everything it writes is checked for the right format and saved to `data/generate
   - `['Question?', 'Right', 'Wrong', 'Wrong', 'Wrong']` is multiple choice (shuffled when asked).
   - `['Question?', ['Answer', 'Also accepted']]` is a typed answer. Small typos, "the" and accents are forgiven, and the host can tap a guess to overrule the marking.
 - **Picture round**: see `public/pictures/README.txt`. Name each file after its answer, e.g. `food/Toad in the hole.jpg`.
-- **Head to Head prompts**: `server/content/prompts.js`
-- **Stories**: `server/content/stories.js`. Use `[a hint]` for blanks and `{A}` / `{B}` for random player names.
+- **Head to Head prompts**: `server/content/prompts.js` (150 prompts, plus 20 for the final round)
+- **Stories**: `server/content/stories.js` (30 stories). Use `[a hint]` for blanks and `{A}` / `{B}` for random player names.
 - **New game**: write a class that extends `BaseGame` (`server/games/base.js`) and register it in `server/games/index.js`. The server owns all state. Each game provides `hostView()` and `playerView(p)`, and the screens just render those.
 
 ## Test
