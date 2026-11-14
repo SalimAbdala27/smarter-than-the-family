@@ -82,12 +82,13 @@
 
   function drawFoot(g) {
     const canSkip = !['over', 'results', 'loading'].includes(g.screen);
-    const label = { write: 'Skip writing', finalWrite: 'Skip writing', question: 'Reveal answer', battle: 'End voting', finalVote: 'End voting', vote: 'End voting', reveal: g.id === 'storytime' ? 'Go to voting' : 'Next', chaseIntro: 'Start the chase', chaseQ: 'Reveal answer' }[g.screen] || 'Next';
+    const label = { write: 'Skip writing', finalWrite: 'Skip writing', question: 'Reveal answer', battle: 'End voting', finalVote: 'End voting', vote: 'End voting', reveal: g.id === 'storytime' ? 'Go to voting' : 'Next', chaseIntro: 'Start the chase', chaseQ: 'Reveal answer', stopping: 'Go to answers' }[g.screen] || 'Next';
+    const label2 = g.id === 'stopthebus' && g.screen === 'write' ? 'Stop the bus now' : label;
     foot.innerHTML = `
       ${g.id === 'pubquiz' && g.screen === 'reveal' ? `<button class="btn small ghost" id="flag" ${g.flagged ? 'disabled' : ''}>${g.flagged ? 'Binned' : '👎 Bad question'}</button>` : ''}
       ${g.id === 'storytime' && g.screen === 'results' ? '<button class="btn small" id="again">Another story</button>' : ''}
       ${(g.screen === 'over' || g.screen === 'results') ? '<button class="btn small teal" id="replay">Play again</button>' : ''}
-      ${canSkip ? `<button class="btn small ghost" id="skip">${label} →</button>` : ''}
+      ${canSkip ? `<button class="btn small ghost" id="skip">${label2} →</button>` : ''}
       <button class="btn small ghost" id="lobby">Back to lobby</button>`;
     const on = (id, fn) => { const el = $(`#${id}`); if (el) el.onclick = fn; };
     on('skip', () => action('next'));
@@ -192,6 +193,25 @@
             ${esc(a.text)}<div class="by">${nameTag(a.by)} · ${a.votes} vote${a.votes === 1 ? '' : 's'}</div></div>`).join('')}</div>`,
       over: (g) => winner(g.scores),
     },
+    stopthebus: {
+      write: (g) => stbWrite(g),
+      stopping: (g) => stbWrite(g),
+      review: (g) => `${timerBar()}
+        <div class="kicker">ROUND ${g.round} OF ${g.rounds} · CATEGORY ${g.ci + 1} OF ${g.categories.length}</div>
+        <div class="stb-head"><span class="stb-letter small">${esc(g.letter)}</span><span class="big-q" style="margin:0">${esc(g.categories[g.ci])}</span></div>
+        <div class="stb-results">${g.results.map((r, i) => `
+          <div class="stb-ans ${r.status} ${r.shared ? 'shared' : ''} rise" style="animation-delay:${i * 80}ms">
+            <span class="who"><span class="dot" style="background:${r.colour}"></span>${esc(r.name)}</span>
+            <span class="txt">${r.text ? esc(r.text) : '—'}</span>
+            <span class="pts">${r.status === 'ok' ? `+${r.points}${r.shared ? ' (same)' : ''}` : { blank: 'blank', 'wrong-letter': 'wrong letter', vetoed: 'vetoed 👎' }[r.status]}</span>
+            ${r.vetoes && r.status !== 'vetoed' ? `<span class="vet">👎 ${r.vetoes}</span>` : ''}
+          </div>`).join('')}</div>
+        <p class="center dim">Dodgy answer? Tap 👎 on your phone. More than half of you = no points.</p>`,
+      roundScores: (g) => `<div class="banner">ROUND ${g.round} SCORES</div>
+        <div class="row" style="justify-content:center;gap:12px;margin:2vh 0">${g.roundPoints.map((r) => `<span class="chip pop"><span class="dot" style="background:${r.colour}">${esc(r.name[0])}</span>${esc(r.name)} +${r.points}${r.stopped ? ' 🚌' : ''}</span>`).join('')}</div>
+        ${scoreboard(g.scores)}`,
+      over: (g) => winner(g.scores),
+    },
     pubquiz: {
       question: (g) => `${timerBar()}${quizBody(g, false)}`,
       reveal: (g) => quizBody(g, true),
@@ -199,6 +219,16 @@
       over: (g) => winner(g.scores),
     },
   };
+
+  function stbWrite(g) {
+    const stopping = g.screen === 'stopping';
+    return `${timerBar()}
+      <div class="kicker">STOP THE BUS · ROUND ${g.round} OF ${g.rounds}</div>
+      <div class="stb-letter pop">${esc(g.letter)}</div>
+      ${stopping ? `<div class="banner pop" style="font-size:2.2em">🚌 ${g.stoppedBy ? `${esc(g.stoppedBy.name)} STOPPED THE BUS!` : 'TIME\'S NEARLY UP!'} <span data-secs></span></div>` : ''}
+      <div class="stb-cats">${g.categories.map((c) => `<span>${esc(c)}</span>`).join('')}</div>
+      ${progress(g.progress, 'x')}`;
+  }
 
   function quizMedia(q) {
     if (q.image) return `<div class="center" style="margin-top:2vh"><img class="quiz-img pop" src="${esc(q.image)}" alt=""></div>`;

@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ORDER = ['geography', 'history', 'science', 'nature', 'sport', 'football', 'music', 'screen',
-  'celebs', 'whoami', 'gaming', 'food', 'britain', 'cars', 'words', 'emoji'];
+  'celebs', 'whoami', 'gaming', 'food', 'britain', 'cars', 'words', 'emoji', 'truefalse', 'oddoneout',
+  'vowels', 'years', 'christmas', 'slogans', 'easy'];
 const PICTURES_DIR = process.env.FAMILY_PICTURES_DIR || path.join(__dirname, '..', '..', '..', 'public', 'pictures');
 
 const files = fs.readdirSync(__dirname).filter((f) => f.endsWith('.js') && f !== 'index.js').map((f) => require(path.join(__dirname, f)));

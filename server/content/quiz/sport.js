@@ -31,5 +31,11 @@ module.exports = {
     ['On a standard dartboard, which number is at the top?', ['20', 'Twenty']],
     ['In which sport are the terms "scrum" and "line-out" used?', ['Rugby', 'Rugby union', 'Rugby league']],
     ['Which sport is played at Lord\'s?', ['Cricket']],
+    ['How many holes are on a standard golf course?', '18', '9', '12', '21'],
+    ['In which sports do you use a cue?', ['Snooker', 'Pool', 'Billiards']],
+    ['How many players are in a rugby union team?', '15', '11', '13', '18'],
+    ['At which circuit is the British Grand Prix held?', 'Silverstone', 'Brands Hatch', 'Donington Park', 'Goodwood'],
+    ['Which country is tennis star Rafael Nadal from?', ['Spain']],
+    ['Which boxer was known as "The Greatest"?', 'Muhammad Ali', 'Mike Tyson', 'Joe Frazier', 'George Foreman'],
   ],
 };

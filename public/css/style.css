@@ -331,3 +331,33 @@ body.player { min-height: 100dvh; }
 .host-cta { margin-top: 5vh; text-align: center; display: grid; gap: 8px; }
 .host-cta a.btn { text-decoration: none; display: block; }
 .kids-cta { margin-top: 18px; text-decoration: none; background: linear-gradient(90deg, #ff5d73, #ffd23f, #3ddc97, #4cc9f0); color: #1a1433; box-shadow: 0 5px 0 #0006; }
+
+/* ---------- Stop the Bus ---------- */
+.stb-letter { font-family: var(--display); font-size: 9em; line-height: 1; color: #1a1433; background: var(--yellow); width: 1.3em; height: 1.3em; border-radius: .22em; display: grid; place-items: center; margin: 1vh auto 2vh; box-shadow: 0 .08em 0 #b38f12; transform: rotate(-4deg); }
+.stb-letter.small { font-size: 3.2em; margin: 0; transform: rotate(-4deg); }
+.stb-letter.onphone { font-size: 3.6em; margin: 0; }
+.stb-head { display: flex; align-items: center; justify-content: center; gap: 1.2vw; margin: 1vh 0 3vh; }
+.stb-cats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 54em; margin: 0 auto; }
+.stb-cats span { background: var(--panel); border-radius: 14px; padding: .4em .9em; font-weight: 700; font-size: 1.2em; }
+.stb-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(17em, 1fr)); gap: 12px; max-width: 70em; margin: 0 auto; }
+.stb-ans { background: #fff8ec; color: #1a1433; border-radius: 18px; padding: .8em 1em; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; position: relative; }
+.stb-ans .who { font-weight: 600; font-size: .8em; display: flex; align-items: center; gap: 6px; }
+.stb-ans .who .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.stb-ans .txt { grid-column: 1 / -1; font-size: 1.6em; font-weight: 700; }
+.stb-ans .pts { grid-column: 2; grid-row: 1; font-family: var(--display); color: #1d8a5c; }
+.stb-ans .vet { position: absolute; right: 10px; bottom: 8px; font-weight: 700; color: var(--pink); }
+.stb-ans.shared .pts { color: #b38f12; }
+.stb-ans.blank, .stb-ans.wrong-letter, .stb-ans.vetoed { background: #4a4280; color: #c9c3ea; }
+.stb-ans.wrong-letter .txt, .stb-ans.vetoed .txt { text-decoration: line-through; }
+.stb-ans.blank .pts, .stb-ans.wrong-letter .pts, .stb-ans.vetoed .pts { color: var(--pink); font-family: var(--body); font-weight: 700; }
+.stb-top { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.stb-form { display: grid; gap: 8px; margin-bottom: 12px; }
+.stb-form label { display: grid; gap: 3px; font-weight: 700; font-size: .85em; color: var(--dim); }
+.stb-form .field { padding: 11px 14px; font-size: 1.05em; }
+.stb-form .field.bad { border-color: var(--pink); }
+.stb-stop { font-size: 1.25em; padding: 18px; }
+.stb-row { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
+.stb-row .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.stb-row.wrong-letter, .stb-row.vetoed, .stb-row.blank { opacity: .55; }
+.stb-row .veto { background: var(--bg2); border-radius: 12px; padding: 10px 14px; font-size: 1.1em; box-shadow: inset 0 0 0 2px var(--line); }
+.stb-row .veto.on { background: var(--pink); box-shadow: none; }

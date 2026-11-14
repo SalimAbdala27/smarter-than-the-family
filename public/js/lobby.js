@@ -1,7 +1,7 @@
 /* Game picker shared by the host screen and the VIP's phone. */
 (function () {
   const { esc } = window.CW;
-  const pick = { gameId: null, options: { categories: [], count: 15, custom: '', fresh: false, chase: true } };
+  const pick = { gameId: null, options: { categories: [], count: 15, custom: '', fresh: false, chase: true, rounds: 3, mode: 'classic' } };
 
   function html(state) {
     const games = state.games;
@@ -19,7 +19,13 @@
         opts += `<div class="opts" style="width:100%"><input class="field" data-key="custom" id="customTopic" maxlength="60" placeholder="Or type any genre… e.g. 90s Premier League" value="${esc(o.custom)}"></div>`;
       }
     }
-    if (state.ai) {
+    if (g.id === 'stopthebus') {
+      opts += `<div class="opts">
+          <button class="toggle ${o.mode === 'classic' ? 'on' : ''}" data-mode="classic">📋 Classic categories</button>
+          <button class="toggle ${o.mode === 'random' ? 'on' : ''}" data-mode="random">🎲 Random categories each round</button></div>
+        <div class="opts">${[3, 5].map((r) => `<button class="toggle ${o.rounds === r ? 'on' : ''}" data-rounds="${r}">${r} rounds</button>`).join('')}</div>`;
+    }
+    if (state.ai && g.id !== 'stopthebus') {
       opts += `<div class="opts"><button class="toggle ${o.fresh ? 'on' : ''}" data-fresh="1">✨ Fresh content from Claude</button></div>`;
     }
     const need = g.minPlayers;
@@ -58,6 +64,8 @@
     root.querySelectorAll('[data-mix]').forEach((b) => b.addEventListener('click', () => { pick.options.categories = []; rerender(); }));
     root.querySelectorAll('[data-count]').forEach((b) => b.addEventListener('click', () => { pick.options.count = Number(b.dataset.count); rerender(); }));
     root.querySelectorAll('[data-chase]').forEach((b) => b.addEventListener('click', () => { pick.options.chase = !pick.options.chase; rerender(); }));
+    root.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { pick.options.mode = b.dataset.mode; rerender(); }));
+    root.querySelectorAll('[data-rounds]').forEach((b) => b.addEventListener('click', () => { pick.options.rounds = Number(b.dataset.rounds); rerender(); }));
     root.querySelectorAll('[data-fresh]').forEach((b) => b.addEventListener('click', () => { pick.options.fresh = !pick.options.fresh; rerender(); }));
     const ct = root.querySelector('#customTopic');
     if (ct) ct.addEventListener('input', () => { pick.options.custom = ct.value; });

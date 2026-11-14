@@ -36,5 +36,12 @@ module.exports = {
     ['Which river flows through Paris?', ['Seine', 'River Seine']],
     ["What is the world's largest island (not counting Australia)?", ['Greenland']],
     ['Which US state is Hollywood in?', ['California']],
+    ['Which river flows through Newcastle?', ['Tyne', 'River Tyne', 'The Tyne']],
+    ['Which UK city is home to the Clifton Suspension Bridge?', ['Bristol']],
+    ['What is the capital of Italy?', ['Rome']],
+    ['What is the capital of Germany?', ['Berlin']],
+    ['In which country is the Taj Mahal?', ['India']],
+    ['Which ocean lies between Africa and Australia?', 'The Indian Ocean', 'The Atlantic Ocean', 'The Pacific Ocean', 'The Arctic Ocean'],
+    ['In which country is the city of Kraków?', 'Poland', 'Czech Republic', 'Hungary', 'Austria'],
   ],
 };

@@ -67,5 +67,11 @@
   }
   const jingle = (notes) => notes.forEach((f, i) => setTimeout(() => beep(f, 0.14), i * 110));
 
-  window.CW = { esc, $, SHAPES, setNow, now, runTimers, render, scoreboard, beep, jingle };
+  const firstLetter = (s) => {
+    const w = String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (w.length > 1 && ['the', 'a', 'an'].includes(w[0])) w.shift();
+    return (w[0] || '').charAt(0).toUpperCase();
+  };
+
+  window.CW = { firstLetter, esc, $, SHAPES, setNow, now, runTimers, render, scoreboard, beep, jingle };
 }());

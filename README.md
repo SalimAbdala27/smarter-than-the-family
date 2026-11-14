@@ -8,7 +8,8 @@ Jackbox-style party games for a UK crowd. One screen (TV or laptop) shows the ga
 |---|---|---|
 | **Story Time** | 2–10 | Everyone fills in blanks ("a UK town", "a verb ending in -ing") without seeing the story. The finished story is shown line by line and can be read aloud in a British voice. Then everyone votes for the best word. |
 | **Head to Head** | 3–10 | Each prompt goes to two players. Everyone else votes for the funnier answer. Round 2 scores double. The final round is one prompt that everyone answers. |
-| **Pub Quiz** | 1–10 | 531 built-in questions in 17 genres, including a *Who Am I?* famous-faces round and a flags picture round. You can add your own photos too. It mixes multiple choice with typed answers, and faster answers score more. It ends with **The Final Chase**. |
+| **Pub Quiz** | 1–10 | 830 built-in questions in 24 genres: general knowledge, *Who Am I?* famous faces, flags, True or False, Odd One Out, Missing Vowels, Name the Year, Christmas, Slogans & Catchphrases and an Easy Peasy family round. You can add your own photos too. It mixes multiple choice with typed answers, and faster answers score more. It ends with **The Final Chase**. |
+| **Stop the Bus** | 2–10 | A random letter and eight categories (Boy's name, Animal, Country, City…). Fill them all and hit STOP THE BUS to give everyone else 5 seconds. Each category is then reviewed on the TV and players can 👎 dodgy answers. 10 points for a unique answer, 5 for a shared one, plus a 10-point bonus for stopping the bus. Choose classic or random categories, over 3 or 5 rounds. |
 
 ### The Final Chase
 It plays out on the TV as a cartoon street scene, and every player has their own character. In the lobby you pick **who's chasing**, and the title changes to match:

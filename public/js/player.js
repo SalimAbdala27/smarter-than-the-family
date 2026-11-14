@@ -91,10 +91,20 @@
     else if (g.screen === 'loading') html = wait('✍️', g.loadingLabel || 'Loading…');
     else html = (VIEWS[g.id] && VIEWS[g.id][g.screen] ? VIEWS[g.id][g.screen](g) : wait('👀', 'Look at the big screen'));
     if (g && me.isVIP && g.screen !== 'loading') html += vipControls(g);
+    // While someone is typing, don't rebuild the same form (it would close the phone keyboard).
+    const inputKeys = (html.match(/data-key="[^"]*"/g) || []).join('|');
+    const formKey = `${phase}#${inputKeys}`;
+    const typing = document.activeElement && main.contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
+    if (typing && inputKeys && formKey === lastFormKey) {
+      runTimers(main, g && g.deadline);
+      return;
+    }
+    lastFormKey = formKey;
     render(main, html);
     bind(g);
     runTimers(main, g && g.deadline);
   }
+  let lastFormKey = '';
 
   const wait = (icon, text, sub = '') => `<div class="wait"><div><div class="big wobble">${icon}</div><h2 style="margin-top:12px">${esc(text)}</h2>${sub ? `<p class="dim">${sub}</p>` : ''}</div></div>`;
   const timer = () => '<div class="timer" data-timer style="margin-bottom:14px"><i></i></div>';
@@ -178,6 +188,20 @@
       finalResult: () => wait('👀', 'Look at the big screen'),
       over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
     },
+    stopthebus: {
+      write: (g) => stbForm(g),
+      stopping: (g) => stbForm(g),
+      review: (g) => `${timer()}<div class="counter" style="text-align:left">Letter <b>${esc(g.letter)}</b> · ${g.ci + 1} of ${g.categories.length}</div>
+        <h1>${esc(g.categories[g.ci])}</h1><p class="dim" style="margin-top:0">Tap 👎 on any answer you don't accept.</p>
+        ${g.results.map((r) => `
+          <div class="stb-row ${r.status}">
+            <span class="dot" style="background:${r.colour}"></span>
+            <span class="grow"><b>${esc(r.name)}</b><br>${r.text ? esc(r.text) : '<span class="dim">—</span>'}</span>
+            ${r.id === state.me.id ? '<span class="dim">you</span>' : r.text ? `<button class="veto ${r.myVeto ? 'on' : ''}" data-veto="${r.id}">👎${r.vetoes ? ` ${r.vetoes}` : ''}</button>` : ''}
+          </div>`).join('')}`,
+      roundScores: (g) => `<h1>+${g.myPoints} this round</h1>${scoreboard(g.scores)}`,
+      over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
+    },
     pubquiz: {
       question: (g) => {
         const q = g.question;
@@ -232,6 +256,19 @@
     },
   };
 
+  function stbForm(g) {
+    const stopping = g.screen === 'stopping';
+    return `${timer()}
+      <div class="stb-top"><div class="stb-letter onphone">${esc(g.letter)}</div>
+        <div class="grow"><b>Round ${g.round} of ${g.rounds}</b><br><span class="dim">Everything must start with ${esc(g.letter)}</span></div></div>
+      ${stopping ? `<div class="err" style="margin:8px 0">🚌 ${g.stoppedBy ? `${esc(g.stoppedBy.name)} stopped the bus!` : 'Time!'} Quick, finish up! <span data-secs></span>s</div>` : ''}
+      <div class="stb-form">${g.categories.map((c, i) => `
+        <label><span>${esc(c)}</span><input class="field" data-key="stb${g.round}-${i}" data-ci="${i}" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false" value="${esc(g.mine[i] || '')}" placeholder="${esc(g.letter)}…"></label>`).join('')}
+      </div>
+      ${stopping ? '' : `<button class="btn block pink stb-stop" id="stopBus" ${g.canStop ? '' : 'disabled'}>🚌 STOP THE BUS!</button>
+      <p class="dim center" style="font-size:.8em">Fill every box with the right letter to stop the bus (+10 bonus)</p>`}`;
+  }
+
   function meCard(m, mood, html) {
     return `<div class="me-card"><div class="pic">${window.CW.avatar(state.me, mood)}</div><div>${html}</div></div>`;
   }
@@ -279,6 +316,27 @@
       quizBtn.onclick = go;
       input.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     }
+    // Stop the Bus: save answers as they type, light up STOP when every box starts with the letter.
+    const stbInputs = main.querySelectorAll('input[data-ci]');
+    if (stbInputs.length) {
+      const timers = {};
+      const letterOk = (v) => window.CW.firstLetter(v) === g.letter;
+      const refreshStop = () => {
+        const btn = $('#stopBus');
+        if (btn) btn.disabled = ![...stbInputs].every((x) => letterOk(x.value));
+        stbInputs.forEach((x) => x.classList.toggle('bad', !!x.value.trim() && !letterOk(x.value)));
+      };
+      const sendFill = (el) => { clearTimeout(timers[el.dataset.ci]); send('fill', { ci: Number(el.dataset.ci), value: el.value }); };
+      stbInputs.forEach((el) => {
+        el.addEventListener('input', () => { clearTimeout(timers[el.dataset.ci]); timers[el.dataset.ci] = setTimeout(() => sendFill(el), 350); refreshStop(); });
+        el.addEventListener('change', () => sendFill(el));
+        el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const n = stbInputs[Number(el.dataset.ci) + 1]; if (n) n.focus(); else el.blur(); } });
+      });
+      refreshStop();
+      const stopBtn = $('#stopBus');
+      if (stopBtn) stopBtn.onclick = () => { stbInputs.forEach(sendFill); send('stop'); };
+    }
+    main.querySelectorAll('[data-veto]').forEach((b) => b.addEventListener('click', () => send('veto', { pid: b.dataset.veto })));
     const safety = $('#safety');
     if (safety) safety.onclick = () => { if (input) input.value = ''; send('safety', { mi: Number(safety.dataset.mi) }); };
     main.querySelectorAll('[data-vote]').forEach((b) => b.addEventListener('click', () => send('vote', { i: Number(b.dataset.vote) })));

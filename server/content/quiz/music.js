@@ -32,5 +32,11 @@ module.exports = {
     ['Who had hits with "Shape of You" and "Perfect"?', ['Ed Sheeran', 'Sheeran']],
     ['Which Beatle was shot dead in New York in 1980?', ['John Lennon', 'Lennon']],
     ['Which Swedish group sang "Dancing Queen"?', ['ABBA']],
+    ['Which Spice Girl was known as Baby Spice?', ['Emma Bunton', 'Emma', 'Bunton']],
+    ['Which singer is known as the "King of Pop"?', ['Michael Jackson', 'Jackson']],
+    ['Which artist released the album "1989"?', 'Taylor Swift', 'Katy Perry', 'Adele', 'Lady Gaga'],
+    ['Which Welsh singer had a 2008 hit with "Mercy"?', ['Duffy']],
+    ['Which group released "Wannabe"?', ['Spice Girls', 'The Spice Girls']],
+    ['What was Elvis Presley\'s nickname?', 'The King', 'The Boss', 'The Duke', 'The Voice'],
   ],
 };

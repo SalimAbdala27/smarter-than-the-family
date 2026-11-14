@@ -33,5 +33,11 @@ module.exports = {
     ['On which ship was Admiral Nelson killed at Trafalgar?', ['HMS Victory', 'Victory']],
     ['Which South African leader was released from prison in 1990?', ['Nelson Mandela', 'Mandela']],
     ['Which city was the capital of the Roman province of Britannia before London, and is often called Britain\'s oldest recorded town?', ['Colchester', 'Camulodunum']],
+    ['Which Egyptian queen was linked with both Julius Caesar and Mark Antony?', ['Cleopatra']],
+    ['Who was the first Tudor king?', 'Henry VII', 'Henry VIII', 'Edward VI', 'Richard III'],
+    ['What was the name of the ship the Pilgrims sailed to America in 1620?', ['Mayflower', 'The Mayflower']],
+    ['Which Roman town was buried by the eruption of Vesuvius in AD 79?', 'Pompeii', 'Rome', 'Naples', 'Verona'],
+    ['Who painted the ceiling of the Sistine Chapel?', 'Michelangelo', 'Leonardo da Vinci', 'Raphael', 'Donatello'],
+    ['Which huge wall was built to protect northern China from invaders?', ['Great Wall', 'Great Wall of China', 'The Great Wall']],
   ],
 };

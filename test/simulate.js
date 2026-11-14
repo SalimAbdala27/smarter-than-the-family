@@ -33,6 +33,14 @@ function act(b) {
     if (g.screen === 'battle' && !g.inBattle && !g.myVote) once(`hv${g.round}${g.battle.prompt}`, () => send('vote', { pid: pick([g.battle.a.pid, g.battle.b.pid]) }));
     if (g.screen === 'finalVote' && !g.myVote && g.final.answers.length) once('hfv', () => send('vote', { pid: pick(g.final.answers).pid }));
   }
+  if (g.id === 'stopthebus' && g.screen === 'write') {
+    g.categories.forEach((c, i) => once(`sb${g.round}${i}`, () => send('fill', { ci: i, value: `${g.letter}${pick(['ob', 'ella', 'onkey', 'ranada', 'ottle'])}` })));
+    if (b.name === 'ALI' && g.canStop) once(`stop${g.round}`, () => send('stop'));
+  }
+  if (g.id === 'stopthebus' && g.screen === 'review') {
+    const target = g.results.find((r) => r.id !== b.state.me.id && r.text);
+    if (target && Math.random() < 0.3) once(`v${g.round}${g.ci}`, () => send('veto', { pid: target.id }));
+  }
   if (g.id === 'pubquiz' && g.screen === 'chaseQ' && g.chase.question && g.chase.myAnswer == null) {
     once(`c${g.chase.n}`, () => send('answer', { choice: Math.random() < 0.6 ? 0 : Math.floor(Math.random() * 4) }));
   }
@@ -50,13 +58,14 @@ async function playGame(host, bots, gameId, options) {
     if (!g) return;
     seen.add(g.screen);
     // Host skips the "look at the screen" pauses so the test runs fast.
-    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal'].includes(g.screen)) {
+    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal', 'review', 'roundScores', 'stopping'].includes(g.screen)) {
       setTimeout(() => host.emit('host:action', { type: 'next' }), 30);
     }
     if (g.id === 'storytime' && g.screen === 'results') finished(st);
     if (g.screen === 'over') finished(st);
   };
   host.on('state', onState);
+  await sleep(600); // let stray timers from the previous game settle
   const res = await emit(bots[0].s, 'player:action', { type: 'ctl:start', data: { gameId, options } });
   if (res.error) throw new Error(res.error);
   const st = await Promise.race([done, sleep(60000).then(() => { throw new Error(`${gameId} timed out; screens: ${[...seen]}`); })]);
@@ -121,6 +130,12 @@ async function playGame(host, bots, gameId, options) {
   const t = r.st.game.chase.track;
   console.log('Final Chase ✓', `family at ${t.family}/${t.length}:`, t.runners.map((x) => `${x.name} started ${x.start} → ${x.status}${x.status === 'home' ? ` #${x.order + 1}` : ''} (+${x.bonus})`).join(', '));
   if (t.runners.some((x) => x.status === 'running')) throw new Error('runner left running');
+
+  await emit(host, 'host:action', { type: 'lobby' });
+  r = await playGame(host, bots, 'stopthebus', { rounds: 3, mode: 'random' });
+  console.log('Stop the Bus ✓ screens:', [...r.seen].join(' → '));
+  console.log('    scores:', r.st.game.scores.map((x) => `${x.name} ${x.score}`).join(', '));
+  if (!r.st.game.scores.some((x) => x.score > 0)) { console.log(JSON.stringify(r.st.game).slice(0, 600)); throw new Error('nobody scored in stop the bus'); }
 
   // Head to Head needs 3+: drop to 2 and check it refuses.
   await emit(host, 'host:action', { type: 'lobby' });

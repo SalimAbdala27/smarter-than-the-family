@@ -31,5 +31,10 @@ module.exports = {
     ['How many planets are in our solar system?', ['8', 'Eight']],
     ['What was the name of the first artificial satellite, launched in 1957?', ['Sputnik', 'Sputnik 1']],
     ['What force keeps us on the ground?', ['Gravity']],
+    ['What is the chemical symbol for oxygen?', ['O']],
+    ['What do we call animals that only eat plants?', ['Herbivores', 'Herbivore']],
+    ['What is the centre of an atom called?', 'The nucleus', 'The electron', 'The proton', 'The shell'],
+    ['Which planet is closest in size to Earth?', ['Venus']],
+    ['How many teeth does an adult human usually have?', '32', '28', '30', '36'],
   ],
 };

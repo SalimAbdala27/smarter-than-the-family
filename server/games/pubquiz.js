@@ -98,7 +98,7 @@ class PubQuiz extends BaseGame {
     if (!this.questions.length) { this.notice = 'No questions found for those categories.'; this.screen = 'over'; this.room.update(); return; }
     if (o.chase !== false) {
       const used = new Set(this.questions.map((q) => q.q + q.answer));
-      const pickChase = (ids) => bankFor(ids).filter((q) => q.kind === 'choice' && !used.has(q.q + q.answer));
+      const pickChase = (ids) => bankFor(ids).filter((q) => q.kind === 'choice' && q.wrong.length === 3 && !used.has(q.q + q.answer));
       let pool = pickChase(catIds);
       if (pool.length < 15) pool = pickChase(allCats);
       this.chaseQs = pickFresh(pool, 15, this.seen).map((q) => {

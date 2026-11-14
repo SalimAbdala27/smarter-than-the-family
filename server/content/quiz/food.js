@@ -31,5 +31,10 @@ module.exports = {
     ["What meat is in a traditional shepherd's pie?", ['Lamb', 'Minced lamb', 'Lamb mince']],
     ['Tofu is made from which bean?', ['Soya', 'Soy', 'Soya bean', 'Soy bean', 'Soybean', 'Soybeans']],
     ['Which county is the pasty most famously from?', ['Cornwall']],
+    ['Which fruit is dried to make raisins?', ['Grape', 'Grapes']],
+    ['What are the main ingredients of a Spanish tortilla?', 'Potato and egg', 'Rice and beans', 'Beef and cheese', 'Chicken and peppers'],
+    ['Which country does feta cheese come from?', ['Greece']],
+    ['Which drink is made from fermented apples?', ['Cider']],
+    ['Which nut is in the middle of a Ferrero Rocher?', 'Hazelnut', 'Almond', 'Walnut', 'Peanut'],
   ],
 };

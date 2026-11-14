@@ -32,5 +32,11 @@ module.exports = {
     ["In Breaking Bad, what is Walter White's alias?", ['Heisenberg']],
     ['Which show has would-be entrepreneurs pitching to investors called "Dragons"?', ["Dragons' Den", 'Dragons Den']],
     ['Which TV show has contestants bake a "showstopper" in a tent?', ['The Great British Bake Off', 'Bake Off', 'Great British Bake Off', 'GBBO']],
+    ['Which Pixar film is about a rat who wants to be a chef?', ['Ratatouille']],
+    ['In Friends, what is the name of the coffee shop?', 'Central Perk', 'Monica\'s', 'The Grind', 'Java Joe\'s'],
+    ['Which fictional detective lives at 221B Baker Street?', ['Sherlock Holmes', 'Sherlock', 'Holmes']],
+    ['Which actor played Captain Jack Sparrow?', 'Johnny Depp', 'Orlando Bloom', 'Keira Knightley', 'Brad Pitt'],
+    ['What is the name of the cowboy toy in Toy Story?', ['Woody', 'Sheriff Woody']],
+    ['Which soap is set in the Yorkshire Dales?', 'Emmerdale', 'Coronation Street', 'EastEnders', 'Hollyoaks'],
   ],
 };
