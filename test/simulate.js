@@ -37,6 +37,15 @@ function act(b) {
     g.categories.forEach((c, i) => once(`sb${g.round}${i}`, () => send('fill', { ci: i, value: `${g.letter}${pick(['ob', 'ella', 'onkey', 'ranada', 'ottle'])}` })));
     if (b.name === 'ALI' && g.canStop) once(`stop${g.round}`, () => send('stop'));
   }
+  if (g.id === 'imposter') {
+    if (g.screen === 'reveal' && !g.amReady) once(`ir${g.round}`, () => send('ready'));
+    if (g.screen === 'clue' && g.myTurn) once(`ic${g.round}-${g.pass}`, () => send('clue', { text: pick(['tasty', 'big', 'loud', 'round', 'old']) }));
+    if (g.screen === 'vote' && !g.myVote) {
+      const others = g.table.filter((x) => x.id !== b.state.me.id);
+      once(`iv${g.round}`, () => send('vote', { pid: pick(others).id }));
+    }
+    if (g.screen === 'guess' && g.isImposter) once(`ig${g.round}`, () => send('guess', { text: 'pizza' }));
+  }
   if (g.id === 'stopthebus' && g.screen === 'review') {
     const target = g.results.find((r) => r.id !== b.state.me.id && r.text);
     if (target && Math.random() < 0.3) once(`v${g.round}${g.ci}`, () => send('veto', { pid: target.id }));
@@ -58,7 +67,7 @@ async function playGame(host, bots, gameId, options) {
     if (!g) return;
     seen.add(g.screen);
     // Host skips the "look at the screen" pauses so the test runs fast.
-    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal', 'review', 'roundScores', 'stopping'].includes(g.screen)) {
+    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal', 'review', 'roundScores', 'stopping', 'discuss', 'votereveal', 'roundResult'].includes(g.screen) && !(g.id === 'imposter' && g.screen === 'reveal')) {
       setTimeout(() => host.emit('host:action', { type: 'next' }), 30);
     }
     if (g.id === 'storytime' && g.screen === 'results') finished(st);
@@ -136,6 +145,12 @@ async function playGame(host, bots, gameId, options) {
   console.log('Stop the Bus ✓ screens:', [...r.seen].join(' → '));
   console.log('    scores:', r.st.game.scores.map((x) => `${x.name} ${x.score}`).join(', '));
   if (!r.st.game.scores.some((x) => x.score > 0)) { console.log(JSON.stringify(r.st.game).slice(0, 600)); throw new Error('nobody scored in stop the bus'); }
+
+  await emit(host, 'host:action', { type: 'lobby' });
+  r = await playGame(host, bots, 'imposter', { rounds: 3, passes: 2 });
+  console.log('Imposter ✓ screens:', [...r.seen].join(' → '));
+  console.log('    scores:', r.st.game.scores.map((x) => `${x.name} ${x.score}`).join(', '));
+  if (!r.st.game.scores.some((x) => x.score > 0)) throw new Error('nobody scored in imposter');
 
   // Head to Head needs 3+: drop to 2 and check it refuses.
   await emit(host, 'host:action', { type: 'lobby' });

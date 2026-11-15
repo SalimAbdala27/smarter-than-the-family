@@ -83,7 +83,8 @@
   function drawFoot(g) {
     const canSkip = !['over', 'results', 'loading'].includes(g.screen);
     const label = { write: 'Skip writing', finalWrite: 'Skip writing', question: 'Reveal answer', battle: 'End voting', finalVote: 'End voting', vote: 'End voting', reveal: g.id === 'storytime' ? 'Go to voting' : 'Next', chaseIntro: 'Start the chase', chaseQ: 'Reveal answer', stopping: 'Go to answers' }[g.screen] || 'Next';
-    const label2 = g.id === 'stopthebus' && g.screen === 'write' ? 'Stop the bus now' : label;
+    const impLabels = { reveal: 'Start clues', clue: 'Skip turn', discuss: 'Start voting', votereveal: 'Next', guess: 'Time up' };
+    const label2 = g.id === 'stopthebus' && g.screen === 'write' ? 'Stop the bus now' : g.id === 'imposter' && impLabels[g.screen] ? impLabels[g.screen] : label;
     foot.innerHTML = `
       ${g.id === 'pubquiz' && g.screen === 'reveal' ? `<button class="btn small ghost" id="flag" ${g.flagged ? 'disabled' : ''}>${g.flagged ? 'Binned' : '👎 Bad question'}</button>` : ''}
       ${g.id === 'storytime' && g.screen === 'results' ? '<button class="btn small" id="again">Another story</button>' : ''}
@@ -193,6 +194,54 @@
             ${esc(a.text)}<div class="by">${nameTag(a.by)} · ${a.votes} vote${a.votes === 1 ? '' : 's'}</div></div>`).join('')}</div>`,
       over: (g) => winner(g.scores),
     },
+    imposter: {
+      reveal: (g) => `${timerBar()}
+        <div class="kicker">IMPOSTER · ROUND ${g.round} OF ${g.rounds}</div>
+        <div class="banner pop" style="font-size:3.4em">🤫 One of you is the imposter</div>
+        <div class="imp-cat">Category: <b>${esc(g.category)}</b></div>
+        <p class="center dim" style="font-size:1.2em">Check your phone in secret. Everyone has the word, apart from the imposter.</p>
+        <div class="imp-row">${state.players.filter((p) => p.connected).map((p) => `<div class="imp-seat ${g.ready.includes(p.id) ? 'ready' : ''}"><div class="pic">${window.CW.avatar(p, g.ready.includes(p.id) ? 'happy' : 'idle')}</div><b>${esc(p.name)}</b><small>${g.ready.includes(p.id) ? 'ready' : 'looking…'}</small></div>`).join('')}</div>`,
+      clue: (g) => `${timerBar()}
+        <div class="kicker">IMPOSTER · ROUND ${g.round} OF ${g.rounds}${g.passes > 1 ? ` · CLUE ${g.pass} OF ${g.passes}` : ''}</div>
+        <div class="imp-cat">Category: <b>${esc(g.category)}</b></div>
+        <div class="big-q" style="margin:1vh 0 2vh;font-size:2em">${esc(g.turn.name)}, give us a clue…</div>
+        ${impTable(g, g.turn.id)}`,
+      discuss: (g) => `${timerBar()}
+        <div class="banner pop">🗣️ DISCUSS! WHO'S THE IMPOSTER?</div>
+        <div class="imp-cat">Category: <b>${esc(g.category)}</b></div>
+        ${impTable(g)}`,
+      vote: (g) => `${timerBar()}
+        <div class="banner">🗳️ VOTE ON YOUR PHONE</div>
+        <p class="center dim">${g.voted.length}/${state.players.filter((p) => p.connected).length} voted</p>
+        ${impTable(g)}`,
+      votereveal: (g) => `
+        <div class="banner pop">${g.accused ? `THE GROUP ACCUSES ${esc(g.accused.name)}!` : "IT'S A TIE! NOBODY GETS THROWN OUT"}</div>
+        <div class="imp-row" style="margin-top:3vh">${g.tally.map((t) => `
+          <div class="imp-seat ${g.accused && g.accused.id === t.id ? 'accused' : ''}">
+            <div class="pic">${window.CW.avatar(t, g.accused && g.accused.id === t.id ? 'scared' : 'idle')}</div>
+            <b>${esc(t.name)}</b><span class="imp-votes">${t.votes} vote${t.votes === 1 ? '' : 's'}</span>
+            <div class="voters">${t.voters.map((v) => `<span title="${esc(v.name)}" style="background:${v.colour}"></span>`).join('')}</div>
+          </div>`).join('')}</div>
+        <p class="center dim" style="font-size:1.3em;margin-top:3vh">But were they the imposter…?</p>`,
+      guess: (g) => `${timerBar()}
+        <div class="banner pop">🎯 ${esc(g.imposter.name)} WAS THE IMPOSTER!</div>
+        <div style="width:10em;height:11em;margin:2vh auto">${window.CW.avatar(g.imposter, 'scared')}</div>
+        <div class="big-q" style="font-size:2em">…but if they can guess the secret word, they steal the round!</div>
+        <div class="imp-cat" style="margin-top:2vh">Category: <b>${esc(g.category)}</b></div>`,
+      roundResult: (g) => {
+        const headline = { escaped: `${esc(g.imposter.name)} GOT AWAY WITH IT! +300`, stole: `${esc(g.imposter.name)} GUESSED IT AND STOLE THE ROUND! +200`, caught: 'IMPOSTER CAUGHT! EVERYONE ELSE +100' }[g.outcome];
+        return `<div class="kicker">THE SECRET WORD WAS</div>
+          <div class="imp-word pop">${esc(g.word)}</div>
+          <div class="row" style="justify-content:center;gap:2vw;margin:1vh 0">
+            <div style="width:7em;height:7.7em">${window.CW.avatar(g.imposter, g.outcome === 'caught' ? 'ghost' : 'happy')}</div>
+            <div><div class="kicker" style="text-align:left">THE IMPOSTER WAS ${esc(g.imposter.name)}</div>
+            <div class="banner" style="font-size:1.8em;text-align:left">${headline}</div>
+            ${g.guess ? `<div class="dim">Their guess: “${esc(g.guess)}”</div>` : ''}
+            ${g.outcome === 'caught' ? '<div class="dim">+100 more for everyone who voted for them</div>' : ''}</div>
+          </div>${scoreboard(g.scores)}`;
+      },
+      over: (g) => winner(g.scores),
+    },
     stopthebus: {
       write: (g) => stbWrite(g),
       stopping: (g) => stbWrite(g),
@@ -219,6 +268,15 @@
       over: (g) => winner(g.scores),
     },
   };
+
+  function impTable(g, turnId) {
+    return `<div class="imp-table">${g.table.map((p) => `
+      <div class="imp-clue ${turnId === p.id ? 'turn' : ''} ${p.clues.length ? '' : 'waiting'}">
+        <div class="pic">${window.CW.avatar(p, turnId === p.id ? 'scared' : 'idle')}</div>
+        <div class="who">${esc(p.name)}</div>
+        <div class="said">${p.clues.length ? p.clues.map((c) => `<span class="pop">${esc(c)}</span>`).join('') : (turnId === p.id ? '<span class="thinking">thinking…</span>' : '<span class="dim">—</span>')}</div>
+      </div>`).join('')}</div>`;
+  }
 
   function stbWrite(g) {
     const stopping = g.screen === 'stopping';

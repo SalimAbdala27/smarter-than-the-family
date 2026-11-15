@@ -4,7 +4,8 @@ const StoryTime = require('./storytime');
 const HeadToHead = require('./headtohead');
 const PubQuiz = require('./pubquiz');
 const StopTheBus = require('./stopthebus');
+const Imposter = require('./imposter');
 
-const GAMES = Object.fromEntries([StoryTime, HeadToHead, PubQuiz, StopTheBus].map((G) => [G.meta.id, G]));
+const GAMES = Object.fromEntries([StoryTime, HeadToHead, PubQuiz, StopTheBus, Imposter].map((G) => [G.meta.id, G]));
 
 module.exports = { GAMES };

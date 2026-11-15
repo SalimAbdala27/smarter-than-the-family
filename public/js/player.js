@@ -188,6 +188,36 @@
       finalResult: () => wait('👀', 'Look at the big screen'),
       over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
     },
+    imposter: {
+      reveal: (g) => `${timer()}<div class="counter" style="text-align:left">Round ${g.round} of ${g.rounds}</div>
+        ${secretCard(g, true)}
+        ${g.amReady ? '<p class="center dim">Waiting for everyone else…</p>' : '<button class="btn block" id="impReady" style="margin-top:14px">Got it 👍</button>'}
+        <p class="center dim" style="font-size:.85em">Keep your screen hidden from everyone else!</p>`,
+      clue: (g) => {
+        if (g.myTurn) {
+          return `${timer()}<h1>Your turn!</h1>
+            <p class="dim" style="margin-top:0">Give a one-word clue. Not too obvious, or the imposter will catch on${g.isImposter ? '. (You\'re the imposter: bluff it!)' : ''}.</p>
+            ${secretCard(g, false)}
+            <div class="stack" style="margin-top:12px"><input class="field" data-key="impclue${g.round}-${g.pass}" id="impClue" maxlength="30" placeholder="Your clue" autocomplete="off" autocorrect="off" enterkeyhint="send">
+            <div class="err hidden" id="impErr">Don't say the actual word!</div>
+            <button class="btn block" id="impSend">Send clue</button></div>`;
+        }
+        return `${timer()}<h2>${esc(g.turn.name)} is giving a clue…</h2>${secretCard(g, false)}${clueList(g)}`;
+      },
+      discuss: (g) => `${timer()}<h1>Discuss! 🗣️</h1><p class="dim" style="margin-top:0">Who's the imposter? Argue it out, then vote.</p>${secretCard(g, false)}${clueList(g)}`,
+      vote: (g) => `${timer()}<h1>Who's the imposter?</h1>
+        ${g.table.filter((p) => p.id !== state.me.id).map((p) => `
+          <button class="opt-btn ${g.myVote === p.id ? 'sel' : ''}" data-pid="${p.id}"><small>${esc(p.clues.join(' · ') || 'no clue')}</small>${esc(p.name)}</button>`).join('')}`,
+      votereveal: () => wait('👀', 'Look at the big screen'),
+      guess: (g) => (g.isImposter
+        ? `${timer()}<h1>You've been caught!</h1><p>Guess the secret word to steal the round. Category: <b>${esc(g.category)}</b></p>
+          <div class="stack"><input class="field" data-key="impguess${g.round}" id="impGuess" maxlength="40" placeholder="The word was…" autocomplete="off" enterkeyhint="send">
+          <button class="btn block pink" id="impGuessBtn">Lock in my guess</button></div>`
+        : wait('😬', `${esc(g.imposter.name)} is guessing the word…`, 'Fingers crossed they get it wrong')),
+      roundResult: (g) => `<h1>${{ escaped: g.imposter.id === state.me.id ? 'You got away with it! 😈' : 'The imposter escaped!', stole: g.imposter.id === state.me.id ? 'You stole it! 🎯' : 'They guessed the word!', caught: g.imposter.id === state.me.id ? 'Caught! 👻' : 'Imposter caught! 🎉' }[g.outcome]}</h1>
+        <p>The word was <b>${esc(g.word)}</b>. The imposter was <b>${esc(g.imposter.name)}</b>.${g.gained[state.me.id] ? ` You got <b>+${g.gained[state.me.id]}</b>.` : ''}</p>${scoreboard(g.scores)}`,
+      over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
+    },
     stopthebus: {
       write: (g) => stbForm(g),
       stopping: (g) => stbForm(g),
@@ -255,6 +285,19 @@
       over: (g) => `${g.chase && g.chase.me ? `<h2>${{ home: g.chase.me.order === 0 ? '🏠 First home! +2000' : '🏠 Escaped! +1000', survived: '😅 Survived! +500', caught: `😱 Caught by ${esc(state.crew.name)}` }[g.chase.me.status] || ''}</h2>` : ''}<h1>Final scores</h1>${scoreboard(g.scores)}`,
     },
   };
+
+  // The secret word, hidden until tapped so people sitting next to you can't see it.
+  let peekRound = null;
+  function secretCard(g, big) {
+    const open = peekRound === `${g.round}`;
+    const inner = g.isImposter
+      ? `<div class="imp-you">🤫 You're the IMPOSTER</div><div>Category: <b>${esc(g.category)}</b></div><div class="dim" style="font-size:.85em">Blend in. Don't get caught!</div>`
+      : `<div class="dim">Category: ${esc(g.category)}</div><div class="imp-secret">${esc(g.word)}</div>`;
+    return `<button class="secret-card ${big ? 'big' : ''} ${open ? 'open' : ''}" id="peek">
+      ${open ? inner : `<div class="imp-you">👀 Tap to see ${big ? 'your secret word' : 'your word'}</div><div class="dim" style="font-size:.85em">Make sure nobody's looking</div>`}
+    </button>`;
+  }
+  const clueList = (g) => `<div class="imp-list">${g.table.map((p) => `<div><b>${esc(p.name)}</b><span>${p.clues.length ? esc(p.clues.join(' · ')) : '…'}</span></div>`).join('')}</div>`;
 
   function stbForm(g) {
     const stopping = g.screen === 'stopping';
@@ -335,6 +378,31 @@
       refreshStop();
       const stopBtn = $('#stopBus');
       if (stopBtn) stopBtn.onclick = () => { stbInputs.forEach(sendFill); send('stop'); };
+    }
+    // Imposter controls
+    const peek = $('#peek');
+    if (peek) peek.onclick = () => { peekRound = peekRound === `${g.round}` ? null : `${g.round}`; lastFormKey = ''; draw(); };
+    const ready = $('#impReady');
+    if (ready) ready.onclick = () => { peekRound = null; send('ready'); };
+    const clueIn = $('#impClue');
+    if (clueIn) {
+      const go = () => {
+        const v = clueIn.value.trim();
+        if (!v) return clueIn.focus();
+        const nrm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!g.isImposter && g.word && nrm(v).includes(nrm(g.word))) { $('#impErr').classList.remove('hidden'); return undefined; }
+        send('clue', { text: v });
+        clueIn.value = '';
+        return undefined;
+      };
+      $('#impSend').onclick = go;
+      clueIn.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    }
+    const guessIn = $('#impGuess');
+    if (guessIn) {
+      const go = () => { const v = guessIn.value.trim(); if (v) send('guess', { text: v }); };
+      $('#impGuessBtn').onclick = go;
+      guessIn.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     }
     main.querySelectorAll('[data-veto]').forEach((b) => b.addEventListener('click', () => send('veto', { pid: b.dataset.veto })));
     const safety = $('#safety');

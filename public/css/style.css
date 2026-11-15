@@ -361,3 +361,32 @@ body.player { min-height: 100dvh; }
 .stb-row.wrong-letter, .stb-row.vetoed, .stb-row.blank { opacity: .55; }
 .stb-row .veto { background: var(--bg2); border-radius: 12px; padding: 10px 14px; font-size: 1.1em; box-shadow: inset 0 0 0 2px var(--line); }
 .stb-row .veto.on { background: var(--pink); box-shadow: none; }
+
+/* ---------- Imposter ---------- */
+.imp-cat { text-align: center; font-size: 1.5em; margin: 1vh 0; }
+.imp-cat b { color: var(--yellow); }
+.imp-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6vw; margin-top: 2vh; }
+.imp-seat { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 8em; padding: .8em .4em; border-radius: 18px; background: var(--panel); transition: transform .3s; }
+.imp-seat .pic { width: 5em; height: 5.5em; }
+.imp-seat small { color: var(--dim); }
+.imp-seat.ready { box-shadow: inset 0 0 0 3px var(--teal); }
+.imp-seat.accused { box-shadow: inset 0 0 0 4px var(--pink); transform: scale(1.12); }
+.imp-seat .imp-votes { font-family: var(--display); color: var(--yellow); }
+.imp-seat .voters { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 14px; }
+.imp-seat .voters span { width: 14px; height: 14px; border-radius: 50%; }
+.imp-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(13em, 1fr)); gap: 12px; max-width: 72em; margin: 0 auto; }
+.imp-clue { display: grid; grid-template-columns: 3.4em 1fr; grid-template-rows: auto auto; column-gap: 12px; align-items: center; background: var(--panel); border-radius: 18px; padding: .7em 1em; }
+.imp-clue .pic { grid-row: 1 / 3; width: 3.4em; height: 3.7em; }
+.imp-clue .who { font-weight: 700; font-size: .85em; color: var(--dim); }
+.imp-clue .said span { display: inline-block; background: #fff8ec; color: #1a1433; border-radius: 10px; padding: .1em .6em; font-weight: 700; font-size: 1.3em; margin: 2px 6px 2px 0; }
+.imp-clue.turn { box-shadow: inset 0 0 0 4px var(--yellow); }
+.imp-clue .thinking { color: var(--yellow); font-weight: 700; animation: breathe 1.2s infinite; display: inline-block; }
+.imp-word { text-align: center; font-family: var(--display); font-size: 5em; color: var(--yellow); text-shadow: 0 8px 0 rgba(0,0,0,.35); margin: 1vh 0; }
+.secret-card { display: block; width: 100%; text-align: center; background: var(--panel); border-radius: 22px; padding: 18px; box-shadow: inset 0 0 0 3px var(--line); margin: 10px 0; }
+.secret-card.big { padding: 34px 18px; }
+.secret-card.open { background: #2e2660; box-shadow: inset 0 0 0 3px var(--yellow); }
+.secret-card .imp-you { font-family: var(--display); font-size: 1.3em; color: var(--yellow); margin-bottom: 6px; }
+.secret-card .imp-secret { font-family: var(--display); font-size: 2.4em; margin-top: 4px; line-height: 1.1; }
+.imp-list { display: grid; gap: 6px; margin-top: 12px; }
+.imp-list div { display: flex; justify-content: space-between; gap: 10px; background: var(--panel); border-radius: 12px; padding: 10px 14px; }
+.imp-list span { font-weight: 700; color: var(--yellow); text-align: right; }
