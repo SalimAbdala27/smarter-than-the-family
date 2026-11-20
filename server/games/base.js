@@ -29,6 +29,7 @@ class BaseGame {
     this.deadline = null;
     this._timer = null;
     this._disposed = false;
+    this.gid = Math.random().toString(36).slice(2, 9); // this particular game, so screens can tell games apart
   }
 
   // Run an async content fetch behind a "loading" screen. Resolves null on failure so callers fall back.
@@ -46,7 +47,7 @@ class BaseGame {
 
   get players() { return this.room.players; }
   player(id) { return this.room.player(id); }
-  pub(p) { return p ? { id: p.id, name: p.name, colour: p.colour } : null; }
+  pub(p) { return p ? { id: p.id, name: p.name, colour: p.colour, look: p.look } : null; }
 
   // One phase timer at a time: setting a new one replaces the old.
   timer(ms, fn) {
@@ -74,7 +75,7 @@ class BaseGame {
   }
 
   common() {
-    return { id: this.constructor.meta.id, screen: this.screen, deadline: this.deadline, loadingLabel: this.screen === 'loading' ? this.loadingLabel : undefined };
+    return { id: this.constructor.meta.id, gid: this.gid, screen: this.screen, deadline: this.deadline, loadingLabel: this.screen === 'loading' ? this.loadingLabel : undefined };
   }
 
   onHostAction() {}

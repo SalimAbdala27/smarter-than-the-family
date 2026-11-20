@@ -1,5 +1,6 @@
 /* Cartoon characters. Every player gets one, picked from their id so it never changes mid-game.
-   CW.avatar(player, mood)  mood: idle | run | scared | happy | ghost
+   CW.avatar(player, mood)  mood: idle | run | scared | happy | sad | ghost
+   A player's look comes from `look` (set by the Shuffle button) or else their id.
    CW.crew(id, mood)        the Final Chase chasers (family | mates | knowalls). mood: stomp | gloat | sulk */
 (function () {
   const INK = '#14112b';
@@ -33,6 +34,9 @@
     } else if (mood === 'scared') {
       eyes = `<circle cx="40" cy="52" r="8" fill="#fff" stroke="${INK}" stroke-width="3"/><circle cx="60" cy="52" r="8" fill="#fff" stroke="${INK}" stroke-width="3"/><circle cx="38" cy="52" r="2" fill="${INK}"/><circle cx="58" cy="52" r="2" fill="${INK}"/>`;
       mouth = `<ellipse cx="50" cy="72" rx="6" ry="8" fill="#7a1f35" stroke="${INK}" stroke-width="3"/>`;
+    } else if (mood === 'sad') {
+      eyes = `<path d="M33 50 Q40 56 47 50" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><path d="M53 50 Q60 56 67 50" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><path d="M33 44 L45 41 M67 44 L55 41" stroke="${INK}" stroke-width="3" stroke-linecap="round"/>`;
+      mouth = `<path d="M42 72 Q50 64 58 72" fill="none" stroke="${INK}" stroke-width="3.5" stroke-linecap="round"/><ellipse cx="34" cy="60" rx="2.5" ry="4" fill="#7cd3ff" class="tear"/>`;
     } else if (mood === 'ghost') {
       eyes = `<ellipse cx="40" cy="52" rx="4.5" ry="6.5" fill="${INK}"/><ellipse cx="60" cy="52" rx="4.5" ry="6.5" fill="${INK}"/>`;
       mouth = `<ellipse cx="50" cy="69" rx="4" ry="5" fill="${INK}"/>`;
@@ -49,7 +53,7 @@
   }
 
   function avatar(p, mood = 'idle', cls = '') {
-    const h = hash(p.id || p.name);
+    const h = Number.isInteger(p.look) ? (p.look * 2654435761) >>> 0 : hash(p.id || p.name);
     const body = BODIES[h % BODIES.length];
     const accIndex = (h >>> 3) % ACCESSORIES.length;
     const hat = HAT_COLOURS[(h >>> 6) % HAT_COLOURS.length];
@@ -58,7 +62,9 @@
     const legs = ghost ? '' : `
       <g class="leg l"><rect x="35" y="84" width="9" height="18" rx="4.5" fill="${p.colour}" stroke="${INK}" stroke-width="3"/><ellipse cx="38" cy="104" rx="8" ry="4.5" fill="${INK}"/></g>
       <g class="leg r"><rect x="56" y="84" width="9" height="18" rx="4.5" fill="${p.colour}" stroke="${INK}" stroke-width="3"/><ellipse cx="62" cy="104" rx="8" ry="4.5" fill="${INK}"/></g>`;
-    const arms = ghost ? '' : mood === 'happy' || mood === 'scared'
+    const arms = ghost ? '' : mood === 'sad'
+      ? `<path d="M18 66 L14 84" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M82 66 L86 84" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`
+      : mood === 'happy' || mood === 'scared'
       ? `<path d="M18 60 L6 40" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path d="M82 60 L94 40" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`
       : `<path class="arm l" d="M18 64 L8 74" stroke="${INK}" stroke-width="5" stroke-linecap="round"/><path class="arm r" d="M82 64 L92 72" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
     return `<svg class="av ${mood} ${cls}" viewBox="0 -4 100 114" aria-label="${(p.name || '').replace(/"/g, '')}">

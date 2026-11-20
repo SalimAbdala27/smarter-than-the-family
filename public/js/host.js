@@ -1,6 +1,6 @@
 /* Host (TV) screen. Shows the room, the questions and the results; phones do the input. */
 (function () {
-  const { esc, $, SHAPES, setNow, runTimers, render, scoreboard, beep, jingle } = window.CW;
+  const { esc, $, SHAPES, setNow, runTimers, render, scoreboard, jingle, sfx, crowd } = window.CW;
   const socket = io();
   const main = $('#main');
   const foot = $('#foot');
@@ -9,6 +9,10 @@
   let joinInfo = null;
   let lastKey = '';
   let sound = localStorage.getItem('cwSound') !== 'off';
+  let musicOn = localStorage.getItem('cwMusic') !== 'off';
+  window.CW.audio.sfxOn = sound;
+  window.CW.audio.musicOn = musicOn;
+  window.CW.onTick = (sec) => sfx.tick(sec <= 1);
 
   const action = (type, data) => new Promise((r) => socket.emit('host:action', { type, data }, r));
 
@@ -36,19 +40,44 @@
     location.reload();
   }
 
-  // ---------- sounds on phase change ----------
+  // ---------- look and sound per game ----------
+  const THEME = { pubquiz: ['pub', 'pubquiz'], stopthebus: ['road', 'stopthebus'], imposter: ['spot', 'imposter'], storytime: ['night', 'storytime'], headtohead: ['arena', 'headtohead'], doodle: ['paper', 'doodle'], awards: ['stage', 'awards'] };
+  // Screens that update the same "card" in place rather than moving to a new one.
+  const SAME_CARD = { pubquiz: { reveal: 'question' }, headtohead: { battleResult: 'battle', finalResult: 'finalVote' }, stopthebus: { stopping: 'write' }, doodle: { pickReveal: 'pick' } };
+  function cardKey(g) {
+    if (!g) return 'lobby';
+    const screen = (SAME_CARD[g.id] && SAME_CARD[g.id][g.screen]) || g.screen;
+    const chaseN = g.chase && g.chase.n;
+    return `${g.gid}|${screen}|${g.n || ''}|${chaseN && g.screen.startsWith('chase') ? chaseN : ''}|${g.battle ? g.battle.index : ''}|${g.round || ''}|${g.ci != null ? g.ci : ''}|${g.di != null ? g.di : ''}|${g.ai != null ? g.ai : ''}|${g.turn ? g.turn.id + g.pass : ''}`;
+  }
+
+  // Sounds on phase change.
+  let lastCard = '';
   function cue(g) {
-    const key = g ? `${g.id}|${g.screen}|${g.n || (g.chase && g.chase.n) || ''}|${g.battle ? g.battle.index : ''}|${g.round || ''}` : 'lobby';
+    const key = g ? `${cardKey(g)}|${g.screen}` : 'lobby';
+    const card = cardKey(g);
+    const newCard = card !== lastCard;
+    lastCard = card;
     if (key === lastKey) return;
     lastKey = key;
-    if (!sound || !g) return;
+    const [bg, tune] = g ? (g.id === 'pubquiz' && g.screen.startsWith('chase') ? ['night', 'chase'] : THEME[g.id] || ['party', 'lobby']) : ['party', 'lobby'];
+    window.CW.scene(bg);
+    window.CW.music(tune);
+    window.CW.audio.duck(false);
+    if (newCard && g && g.screen !== 'loading') window.CW.wipe();
+    if (!g) return;
     const sc = g.screen;
     if (sc === 'chaseIntro') jingle([392, 392, 392, 311, 466, 392]);
     else if (sc === 'chaseReveal' && g.chase && g.chase.log && g.chase.log.caught.length) jingle([523, 415, 330, 262]);
-    else if (['write', 'finalWrite', 'question', 'chaseQ'].includes(sc)) jingle([523, 659, 784]);
-    else if (['reveal', 'battleResult', 'finalResult'].includes(sc)) jingle([784, 988, 1175]);
-    else if (['scores', 'board', 'over', 'results'].includes(sc)) jingle([523, 659, 784, 1047]);
-    else beep(440);
+    else if (g.id === 'pubquiz' && sc === 'reveal') {
+      window.CW.audio.duck(true);
+      sfx.drumroll(1.2);
+      if (g.results.some((r) => r.right)) sfx.ding(1.25); else sfx.wah(1.3);
+    } else if (['over', 'results', 'finale'].includes(sc)) { sfx.fanfare(); setTimeout(() => window.CW.confetti(160, { spread: 1.2 }), 300); }
+    else if (['scores', 'board', 'roundScores', 'scoresDraw'].includes(sc)) sfx.swoosh();
+    else if (['reveal', 'battleResult', 'finalResult', 'votereveal', 'roundResult', 'pickReveal'].includes(sc)) { sfx.sting(); }
+    else if (newCard) sfx.whoosh();
+    else sfx.blip();
   }
 
   // ---------- top-level draw ----------
@@ -58,10 +87,13 @@
     cue(g);
     $('.host-top .logo').innerHTML = `ARE YOU <b>SMARTER</b> THAN <b>${esc(s.crew.name.toUpperCase())}?</b>`;
     document.title = `Are You Smarter Than ${s.crew.name}?`;
+    window.CW.gid = g ? g.gid : '';
     topRight.innerHTML = `
-      <button class="btn small ghost" id="snd">${sound ? '🔊' : '🔇'}</button>
+      <button class="btn small ghost" id="mus" title="Music">${musicOn ? '🎵' : '<s>🎵</s>'}</button>
+      <button class="btn small ghost" id="snd" title="Sound">${sound ? '🔊' : '🔇'}</button>
       ${g ? `<span class="code-badge">Join at ${esc((joinInfo.base || '').replace(/^https?:\/\//, ''))} · <b>${s.code}</b></span>` : ''}`;
-    $('#snd').onclick = () => { sound = !sound; localStorage.setItem('cwSound', sound ? 'on' : 'off'); if (sound) beep(660); draw(); };
+    $('#snd').onclick = () => { sound = !sound; window.CW.audio.sfxOn = sound; localStorage.setItem('cwSound', sound ? 'on' : 'off'); sfx.blip(); draw(); };
+    $('#mus').onclick = () => { musicOn = !musicOn; window.CW.audio.musicOn = musicOn; localStorage.setItem('cwMusic', musicOn ? 'on' : 'off'); draw(); };
 
     if (!g) return drawLobby();
     if (g.id === 'pubquiz' && g.chase && (g.screen.startsWith('chase') || g.screen === 'over')) {
@@ -70,9 +102,10 @@
       return drawFoot(g);
     }
     const fn = VIEWS[g.id] && VIEWS[g.id][g.screen];
-    if (g.screen === 'loading') render(main, `<div class="center"><div class="big-q wobble">✍️</div><p class="kicker" style="margin-top:3vh">${esc(g.loadingLabel || 'Loading…')}</p></div>`);
-    else if (fn) render(main, fn(g, s));
-    else render(main, `<p class="center dim">…</p>`);
+    const key = `${cardKey(g)}|${g.screen}`;
+    if (g.screen === 'loading') render(main, `<div class="center"><div class="big-q wobble">✍️</div><p class="kicker" style="margin-top:3vh">${esc(g.loadingLabel || 'Loading…')}</p></div>`, key);
+    else if (fn) render(main, fn(g, s), key);
+    else render(main, `<p class="center dim">…</p>`, key);
     main.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', () => action('toggle', { pid: b.dataset.toggle })));
     if (g.id === 'storytime' && g.screen === 'reveal') storyReveal.mount(g);
     else storyReveal.stop();
@@ -102,9 +135,9 @@
   // ---------- lobby ----------
   function drawLobby() {
     const s = state;
-    const players = s.players.map((p) => `
-      <span class="avatar-chip pop ${p.connected ? '' : 'off'}">
-        <span class="pic">${window.CW.avatar(p, 'idle')}</span>
+    const players = s.players.map((p, i) => `
+      <span class="avatar-chip pop ${p.connected ? '' : 'off'}" data-a="chip-${p.id}-${p.look}-${p.colour}">
+        <span class="pic dance" style="--d:${(i % 5) * -0.37}s">${window.CW.avatar(p, 'idle')}</span>
         <span class="nm">${esc(p.name)}${p.id === s.vipId ? ' 👑' : ''}</span>
         <button class="x" data-kick="${p.id}" title="Remove">×</button>
       </span>`).join('');
@@ -124,7 +157,7 @@
           </div>
           <div class="card" id="picker">${window.CW.lobby.html(s)}</div>
         </div>
-      </div>`);
+      </div>`, 'lobby');
     main.querySelectorAll('[data-kick]').forEach((b) => b.addEventListener('click', () => {
       const p = s.players.find((x) => x.id === b.dataset.kick);
       if (p && confirm(`Remove ${p.name}?`)) action('kick', { playerId: p.id });
@@ -140,10 +173,7 @@
 
   // ---------- shared bits ----------
   const timerBar = () => '<div class="timer" data-timer style="max-width:40em;margin:0 auto 3vh"><i></i></div>';
-  const progress = (list, label = '') => `
-    <div class="progress-list">${list.map((p) => `
-      <span class="chip ${p.done >= p.total ? 'done' : ''}"><span class="dot" style="background:${p.colour}">${p.done >= p.total ? '✓' : esc(p.name[0])}</span>${esc(p.name)}${label && p.total > 1 ? ` <small>${p.done}/${p.total}</small>` : ''}</span>`).join('')}
-    </div>`;
+  const progress = (list, label = '') => crowd(list.map((p) => ({ ...p, state: p.done >= p.total ? 'done' : 'typing', note: label && p.total > 1 && p.done < p.total ? `${p.done}/${p.total}` : '' })));
   const nameTag = (p) => (p ? `<span style="color:${p.colour}">●</span> ${esc(p.name)}` : '');
 
   // ---------- per-game views ----------
@@ -296,32 +326,36 @@
 
   function quizBody(g, reveal) {
     const q = g.question;
-    const answered = state.players.filter((p) => g.answered.includes(p.id));
     const media = quizMedia(q);
     let body = '';
     if (q.kind === 'choice') {
-      body = `<div class="answers4">${q.options.map((o, i) => `
-        <div class="ans ans-${i} ${reveal ? (i === g.correct ? 'right' : 'wrong') : ''}">
+      body = `<div class="answers4 ${reveal ? 'drum' : ''}">${q.options.map((o, i) => `
+        <div class="ans ans-${i} ${reveal ? (i === g.correct ? 'right' : 'wrong') : ''}" style="--i:${i}">
           <span class="sh">${SHAPES[i]}</span>${esc(o)}${reveal ? `<span class="n">${g.counts[i]}</span>` : ''}
         </div>`).join('')}</div>`;
     } else if (reveal) {
-      body = `<div class="typed-answer pop">${esc(g.answer)}</div>`;
+      body = `<div class="typed-answer drum-in">${esc(g.answer)}</div>`;
     } else {
       body = '<p class="center dim" style="font-size:1.3em;margin-top:3vh">⌨️ Type your answer on your phone</p>';
     }
     let foot;
     if (reveal && q.kind === 'typed') {
-      foot = g.results.length ? `<div class="guesses">${g.results.map((r) => `
-        <button class="guess ${r.right ? 'ok' : 'no'} pop" data-toggle="${r.id}" title="Tap to overrule">
-          <span class="dot" style="background:${r.colour}"></span><b>${esc(r.name)}</b> ${esc(r.text)}
+      foot = g.results.length ? `<div class="guesses">${g.results.map((r, i) => `
+        <button class="guess ${r.right ? 'ok' : 'no'} late" data-toggle="${r.id}" title="Tap to overrule" style="--i:${i}">
+          <span class="mini">${window.CW.avatar(r, r.right ? 'happy' : 'sad')}</span><b>${esc(r.name)}</b> ${esc(r.text)}
           <span class="mark">${r.right ? `✓ +${r.gained}` : '✗'}${r.overruled ? ' (host)' : ''}</span>
         </button>`).join('')}</div><p class="center dim" style="font-size:.75em">Host: tap a guess to overrule the marking</p>`
         : '<span class="dim" style="font-size:1.3em">Nobody answered!</span>';
     } else if (reveal) {
-      const right = g.results.filter((r) => r.right);
-      foot = right.length ? right.map((p) => `<span class="chip pop"><span class="dot" style="background:${p.colour}">✓</span>${esc(p.name)} +${p.gained}</span>`).join('') : '<span class="dim" style="font-size:1.3em">Nobody got that one!</span>';
+      const res = Object.fromEntries(g.results.map((r) => [r.id, r]));
+      const people = state.players.filter((p) => p.connected || res[p.id]);
+      foot = `<div class="late-crowd">${crowd(people.map((p) => {
+        const r = res[p.id];
+        return { ...p, state: !r ? 'asleep' : r.right ? 'right' : 'wrong', note: r && r.right ? `+${r.gained}` : '' };
+      }))}</div>`;
     } else {
-      foot = `<span class="dim">${answered.length}/${state.players.filter((p) => p.connected).length} answered</span> ${answered.map((p) => `<span class="chip pop"><span class="dot" style="background:${p.colour}">${esc(p.name[0])}</span></span>`).join('')}`;
+      const people = state.players.filter((p) => p.connected);
+      foot = crowd(people.map((p) => ({ ...p, state: g.answered.includes(p.id) ? 'done' : 'typing' })));
     }
     return `
       ${g.notice && g.n === 1 ? `<p class="center" style="color:var(--pink)">${esc(g.notice)}</p>` : ''}
@@ -329,7 +363,7 @@
       <div class="big-q ${reveal ? '' : 'pop'} ${media ? 'with-media' : ''}" style="margin-top:2vh">${esc(q.q)}</div>
       ${media}
       ${body}
-      <div class="row" style="justify-content:center;margin-top:3vh;min-height:3em">${foot}</div>`;
+      <div class="row" style="justify-content:center;margin-top:3vh;min-height:5em">${foot}</div>`;
   }
 
   // ---------- Final Chase ----------
@@ -348,6 +382,9 @@
     const top = $('#chaseTop');
     const bottom = $('#chaseBottom');
     bottom.innerHTML = '';
+    const topKey = `${g.screen}|${c.n || ''}`;
+    top.classList.toggle('settled', top.dataset.k === topKey);
+    top.dataset.k = topKey;
 
     if (g.screen === 'chaseIntro') {
       top.innerHTML = `${timerBar()}<div class="banner pop" style="font-size:2.6em">THE FINAL CHASE</div>
@@ -361,7 +398,7 @@
       top.innerHTML = `${reveal ? '' : timerBar()}
         <div class="kicker">THE FINAL CHASE · QUESTION ${c.n}${reveal ? '' : ` · ${answered}/${runningN} ANSWERED`}</div>
         <div class="big-q" style="font-size:2em;margin-top:.6vh">${esc(q.q)}</div>
-        <div class="chase-answers">${q.options.map((o, i) => `<div class="ans ans-${i} ${reveal ? (i === c.correct ? 'right' : 'wrong') : ''}"><span class="sh">${SHAPES[i]}</span>${esc(o)}</div>`).join('')}</div>`;
+        <div class="chase-answers">${q.options.map((o, i) => `<div class="ans ans-${i} ${reveal ? (i === c.correct ? 'right' : 'wrong') : ''}" style="--i:${i}"><span class="sh">${SHAPES[i]}</span>${esc(o)}</div>`).join('')}</div>`;
       if (reveal) stage.reveal(t, c.log, c.n); else stage.question(t);
     } else {
       const home = t.runners.filter((r) => r.status === 'home').sort((a, b) => a.order - b.order);
@@ -402,9 +439,12 @@
 
   function winner(scores) {
     const top = scores[0];
-    return `<div class="center">
+    return `<div class="center winner">
       <div class="kicker">AND THE WINNER IS…</div>
-      <div class="banner pop" style="font-size:4.5em;color:${top ? top.colour : 'var(--yellow)'}">${top ? esc(top.name) : '—'}</div>
+      <div class="win-hero">
+        ${top ? `<div class="win-pic">${window.CW.avatar(top, 'happy')}</div>` : ''}
+        <div class="banner win-name" style="font-size:4.5em;color:${top ? top.colour : 'var(--yellow)'}">${top ? esc(top.name) : '—'}</div>
+      </div>
       ${scoreboard(scores)}</div>`;
   }
 

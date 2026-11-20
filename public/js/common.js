@@ -10,40 +10,59 @@
   const now = () => Date.now() + offset;
 
   // Animated countdown bar + seconds. Call after each render.
+  // In the last 5 seconds the root gets a "hurry" class (characters get nervous) and onTick fires each second.
   let raf = null;
+  let tickFor = null;
+  let lastSec = null;
   function runTimers(root, deadline, totalGuessMs) {
     cancelAnimationFrame(raf);
     const bars = root.querySelectorAll('[data-timer]');
     const secs = root.querySelectorAll('[data-secs]');
-    if (!deadline) { bars.forEach((b) => b.classList.add('hidden')); secs.forEach((s) => { s.textContent = ''; }); return; }
+    if (!deadline) { root.classList.remove('hurry'); bars.forEach((b) => b.classList.add('hidden')); secs.forEach((s) => { s.textContent = ''; }); return; }
+    if (tickFor !== deadline) { tickFor = deadline; lastSec = null; }
     const start = now();
     const total = Math.max(1000, totalGuessMs || deadline - start);
     const tick = () => {
       const left = Math.max(0, deadline - now());
       bars.forEach((b) => { b.classList.remove('hidden'); b.firstElementChild.style.transform = `scaleX(${Math.min(1, left / total)})`; });
       secs.forEach((s) => { s.textContent = Math.ceil(left / 1000); });
+      const hurry = left > 0 && left <= 5000;
+      root.classList.toggle('hurry', hurry);
+      const sec = Math.ceil(left / 1000);
+      if (hurry && sec !== lastSec) { if (lastSec !== null && window.CW.onTick) window.CW.onTick(sec); lastSec = sec; }
       if (left > 0) raf = requestAnimationFrame(tick);
+      else root.classList.remove('hurry');
     };
     tick();
   }
 
   // Re-rendering on every state update would wipe whatever someone is typing,
   // so carry input values, focus and caret across renders.
-  function render(root, html) {
+  // `scene` names the screen. Entrance animations only play when it changes; on a repeat render the
+  // root is "settled" so nothing re-pops. Elements with data-a="id" animate the first time that id appears.
+  function render(root, html, scene) {
     const saved = {};
     root.querySelectorAll('input[data-key], textarea[data-key]').forEach((el) => { saved[el.dataset.key] = el.value; });
     const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.key : null;
     const caret = active ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+    const fresh = scene === undefined || scene !== root._scene;
+    if (fresh) { root._scene = scene; root._seen = new Set(); }
+    root.classList.toggle('settled', !fresh);
     root.innerHTML = html;
+    root.querySelectorAll('[data-a]').forEach((el) => {
+      if (root._seen.has(el.dataset.a)) el.classList.add('seen'); else root._seen.add(el.dataset.a);
+    });
     root.querySelectorAll('input[data-key], textarea[data-key]').forEach((el) => {
       if (saved[el.dataset.key] != null) el.value = saved[el.dataset.key];
       if (el.dataset.key === active) { el.focus(); try { el.setSelectionRange(caret[0], caret[1]); } catch (e) { /* number inputs */ } }
     });
+    if (window.CW.animateBoards) window.CW.animateBoards(root);
+    return fresh;
   }
 
   function scoreboard(scores) {
-    return `<div class="board">${scores.map((s, i) => `
-      <div class="rowp rise" style="animation-delay:${i * 70}ms">
+    return `<div class="board" data-gid="${esc(window.CW.gid || '')}">${scores.map((s, i) => `
+      <div class="rowp rise" data-pid="${esc(s.id)}" data-score="${s.score}" style="animation-delay:${i * 70}ms">
         <span class="rk">${i + 1}</span>
         ${window.CW.avatar ? `<span class="mini">${window.CW.avatar(s, i === 0 ? 'happy' : 'idle')}</span>` : `<span style="color:${s.colour}">●</span>`} ${esc(s.name)}
         <span class="sc">${s.score}</span>

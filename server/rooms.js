@@ -62,6 +62,7 @@ class Room {
       socketId,
       connected: true,
       score: 0,
+      look: null, // null = drawn from their id; a number once they press Shuffle
     };
     this.players.push(player);
     return { player };
@@ -73,6 +74,24 @@ class Room {
     if (p.socketId) this.io.to(p.socketId).emit('kicked');
     this.players = this.players.filter((x) => x.id !== id);
     if (this.game && this.game.onPlayerRemoved) this.game.onPlayerRemoved(p);
+  }
+
+  // Lobby-only tweaks a player can make to themselves.
+  shuffleLook(p) {
+    if (this.game) return { error: 'Wait for the lobby' };
+    let n;
+    do { n = crypto.randomInt(1, 100000); } while (n === p.look);
+    p.look = n;
+    return { ok: true };
+  }
+
+  nextColour(p) {
+    if (this.game) return { error: 'Wait for the lobby' };
+    const used = new Set(this.players.filter((x) => x !== p).map((x) => x.colour));
+    const free = COLOURS.filter((c) => !used.has(c));
+    const i = free.indexOf(p.colour);
+    p.colour = free[(i + 1) % free.length] || p.colour;
+    return { ok: true };
   }
 
   setCrew(d = {}) {
@@ -127,7 +146,7 @@ class Room {
     return {
       code: this.code,
       vipId: vip ? vip.id : null,
-      players: this.players.map((p) => ({ id: p.id, name: p.name, colour: p.colour, score: p.score, connected: p.connected })),
+      players: this.players.map((p) => ({ id: p.id, name: p.name, colour: p.colour, look: p.look, score: p.score, connected: p.connected })),
       games: Object.values(GAMES).map((G) => G.meta),
       lastGameId: this.lastGameId,
       ai: ai.enabled(),
@@ -145,7 +164,7 @@ class Room {
     return {
       ...this.baseView(),
       role: 'player',
-      me: { id: p.id, name: p.name, colour: p.colour, score: p.score, isVIP: this.vip && this.vip.id === p.id },
+      me: { id: p.id, name: p.name, colour: p.colour, look: p.look, score: p.score, isVIP: this.vip && this.vip.id === p.id },
       game: this.game ? this.game.playerView(p) : null,
     };
   }

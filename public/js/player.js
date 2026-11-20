@@ -9,6 +9,7 @@
   let error = '';
   let lastPhase = '';
   let wakeLock = null;
+  window.CW.audio.sfxOn = false; // the TV does the sound; phones buzz and flash instead
 
   const params = new URLSearchParams(location.search);
   const session = () => JSON.parse(localStorage.getItem('cwPlayer') || 'null');
@@ -82,9 +83,11 @@
     top.innerHTML = `<span class="me"><span class="face">${window.CW.avatar(me, 'idle')}</span>${esc(me.name)}${me.isVIP ? ' 👑' : ''}</span>
       <span class="dim" style="font-size:.85em">${state.code}</span><span class="score">${me.score}</span>`;
 
+    window.CW.gid = g ? g.gid : '';
     // Buzz on a new phase so people look down at their phones.
-    const phase = g ? `${g.id}${g.screen}${g.n || (g.chase && g.chase.n) || ''}${g.round || ''}${g.battle ? g.battle.index : ''}` : 'lobby';
-    if (phase !== lastPhase) { lastPhase = phase; if (navigator.vibrate) navigator.vibrate(40); }
+    const phase = g ? `${g.gid}${g.screen}${g.n || (g.chase && g.chase.n) || ''}${g.round || ''}${g.battle ? g.battle.index : ''}${g.ci != null ? `c${g.ci}` : ''}${g.di != null ? `d${g.di}` : ''}${g.turn ? g.turn.id + g.pass : ''}` : 'lobby';
+    const newPhase = phase !== lastPhase;
+    if (newPhase) { lastPhase = phase; if (!reaction(g)) window.CW.buzz(40); }
 
     let html;
     if (!g) html = lobby();
@@ -100,24 +103,48 @@
       return;
     }
     lastFormKey = formKey;
-    render(main, html);
+    render(main, html, phase);
     bind(g);
     runTimers(main, g && g.deadline);
   }
   let lastFormKey = '';
 
+  // Right, wrong, caught, won: buzz, flash and confetti on your own phone. Returns true if it reacted.
+  function reaction(g) {
+    if (!g) return false;
+    const me = state.me.id;
+    let kind = null;
+    if (g.id === 'pubquiz' && g.screen === 'reveal' && g.myAnswer != null) kind = g.right ? 'good' : 'bad';
+    else if (g.id === 'pubquiz' && g.screen === 'chaseReveal' && g.chase && g.chase.me) {
+      const m = g.chase.me;
+      if (g.chase.log.caught.includes(me)) kind = 'bad';
+      else if (m.status === 'home' && m.moved) kind = 'big';
+      else if (m.status === 'running') kind = m.moved ? 'good' : 'bad';
+    } else if (g.id === 'stopthebus' && g.screen === 'roundScores') kind = g.myPoints > 0 ? 'good' : null;
+    else if (g.id === 'imposter' && g.screen === 'roundResult') kind = g.gained && g.gained[me] > 0 ? 'good' : 'bad';
+    else if (g.id === 'doodle' && g.screen === 'pickReveal' && g.myResult) kind = g.myResult;
+    else if ((g.screen === 'over' || g.screen === 'results') && g.scores && g.scores[0] && g.scores[0].id === me && g.scores[0].score > 0) kind = 'big';
+    if (!kind) return false;
+    setTimeout(() => window.CW.feedback(kind, main), 60);
+    return true;
+  }
+
   const wait = (icon, text, sub = '') => `<div class="wait"><div><div class="big wobble">${icon}</div><h2 style="margin-top:12px">${esc(text)}</h2>${sub ? `<p class="dim">${sub}</p>` : ''}</div></div>`;
+  const meBig = (mood, text, sub = '') => `<div class="wait"><div><div class="me-big ${mood}">${window.CW.avatar(state.me, mood)}</div><h1 style="margin-top:12px">${esc(text)}</h1>${sub ? `<p class="dim">${sub}</p>` : ''}</div></div>`;
   const timer = () => '<div class="timer" data-timer style="margin-bottom:14px"><i></i></div>';
 
   function lobby() {
     const others = state.players.map((p) => `<span class="avatar-chip ${p.connected ? '' : 'off'}" style="font-size:.8em"><span class="pic">${window.CW.avatar(p, 'idle')}</span><span class="nm">${esc(p.name)}</span></span>`).join(' ');
     if (state.me.isVIP) {
       return `<h1>You're the VIP 👑</h1><p class="dim">Pick a game and start when everyone's in.</p>
-        <div class="row" style="gap:6px;margin-bottom:14px">${others}</div>
+        <div class="row" style="gap:6px;margin-bottom:8px">${others}</div>
+        ${lookButtons()}
         <div id="picker">${window.CW.lobby.html(state)}</div>`;
     }
-    return `<div class="wait"><div><div style="width:150px;height:165px;margin:0 auto">${window.CW.avatar(state.me, 'happy')}</div><h2 style="margin-top:12px">You're in!</h2><p class="dim">This is you. Tonight: are you smarter than <b style="color:var(--yellow)">${esc(state.crew.name)}</b>?</p><p class="dim">Waiting for the VIP to start the game.</p></div></div><div class="row" style="gap:6px;justify-content:center">${others}</div>`;
+    return `<div class="wait"><div><div class="pop" data-a="me-${state.me.look}-${state.me.colour}" style="width:150px;height:165px;margin:0 auto">${window.CW.avatar(state.me, 'happy')}</div>${lookButtons()}<h2 style="margin-top:12px">You're in!</h2><p class="dim">This is you. Tonight: are you smarter than <b style="color:var(--yellow)">${esc(state.crew.name)}</b>?</p><p class="dim">Waiting for the VIP to start the game.</p></div></div><div class="row" style="gap:6px;justify-content:center">${others}</div>`;
   }
+
+  const lookButtons = () => '<div class="lobby-me"><button class="btn small ghost" data-me="look">🔀 New look</button><button class="btn small ghost" data-me="colour">🎨 Colour</button></div>';
 
   function vipControls(g) {
     const done = g.screen === 'over' || g.screen === 'results';
@@ -250,8 +277,8 @@
           </div>`;
       },
       reveal: (g) => {
-        if (g.myAnswer == null) return wait('😴', 'Too slow!', `It was: ${esc(g.answer)}`);
-        return g.right ? wait('🎉', `Correct! +${g.gained}`, `It was: ${esc(g.answer)}`) : wait('🙈', 'Wrong!', `It was: ${esc(g.answer)}`);
+        if (g.myAnswer == null) return meBig('sad', 'Too slow!', `It was: ${esc(g.answer)}`);
+        return g.right ? meBig('happy', `Correct! +${g.gained}`, `It was: ${esc(g.answer)}`) : meBig('sad', 'Wrong!', `It was: ${esc(g.answer)}`);
       },
       board: (g) => `<h1>Leaderboard</h1>${scoreboard(g.scores)}`,
       chaseIntro: (g) => {
@@ -336,6 +363,7 @@
 
   // ---------- events ----------
   function bind(g) {
+    main.querySelectorAll('[data-me]').forEach((b) => b.addEventListener('click', () => { window.CW.buzz(15); send(b.dataset.me); }));
     if (!g) {
       const picker = $('#picker');
       if (picker) window.CW.lobby.bind(picker, async (type, data) => { const r = await send(`ctl:${type}`, data); if (r && r.error) alert(r.error); }, draw);

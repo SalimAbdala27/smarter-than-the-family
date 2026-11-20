@@ -120,6 +120,11 @@ io.on('connection', (socket) => {
     if (!p) return ack(cb, { error: 'Not in a room' });
     const isVIP = room.vip && room.vip.id === p.id;
     const type = String(msg.type || '');
+    if (type === 'look' || type === 'colour') {
+      const res = type === 'look' ? room.shuffleLook(p) : room.nextColour(p);
+      room.update();
+      return ack(cb, res);
+    }
     if (isVIP && type.startsWith('ctl:')) {
       const t = type.slice(4);
       const res = roomControl(t, msg.data, false);
