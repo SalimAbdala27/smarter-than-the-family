@@ -25,9 +25,47 @@
   });
   socket.on('disconnect', () => { topRight.innerHTML = '<span class="code-badge" style="color:var(--pink)">Reconnecting…</span>'; });
 
+  // ---------- running league, kept in this browser so it survives server restarts ----------
+  const GAME_NAMES = { storytime: 'Story Time', headtohead: 'Head to Head', pubquiz: 'Pub Quiz', stopthebus: 'Stop the Bus', imposter: 'Imposter', doodle: 'Doodle Bluff' };
+  const league = {
+    get() { try { return JSON.parse(localStorage.getItem('cwLeague')) || null; } catch (e) { return null; } },
+    data() { return this.get() || { players: {}, gids: [], nights: [], since: Date.now() }; },
+    save(d) { try { localStorage.setItem('cwLeague', JSON.stringify(d)); } catch (e) { /* storage full or blocked */ } },
+    record(res) {
+      const d = this.data();
+      if (d.gids.includes(res.gid)) return;
+      d.gids = d.gids.concat(res.gid).slice(-200);
+      const top = Math.max(0, ...res.scores.map((x) => x.score));
+      res.scores.forEach((x) => {
+        const p = (d.players[x.name] = d.players[x.name] || { wins: 0, games: 0, points: 0, best: {} });
+        p.games += 1;
+        p.points += x.score;
+        if (top > 0 && x.score === top) { p.wins += 1; p.best[res.gameId] = (p.best[res.gameId] || 0) + 1; }
+        p.last = res.at;
+      });
+      this.save(d);
+    },
+    champion(names) {
+      const d = this.data();
+      const day = new Date().toISOString().slice(0, 10);
+      d.nights = d.nights.filter((n) => n.day !== day).concat({ day, names }).slice(-60);
+      this.save(d);
+    },
+    table() {
+      const d = this.data();
+      return Object.entries(d.players).map(([name, p]) => ({ name, ...p, nights: d.nights.filter((n) => n.names.includes(name)).length }))
+        .sort((a, b) => b.wins - a.wins || b.nights - a.nights || b.points - a.points);
+    },
+  };
+
   socket.on('state', async (s) => {
     state = s;
     setNow(s.now);
+    if (s.lastResult) league.record(s.lastResult);
+    if (s.game && s.game.id === 'awards' && s.game.screen === 'finale') {
+      const champ = s.game.all.find((a) => a.final);
+      if (champ) league.champion(champ.winners.map((w) => w.name));
+    }
     if (!joinInfo || joinInfo.code !== s.code) {
       const j = await fetch(`/api/join-info?code=${s.code}`).then((r) => r.json());
       joinInfo = { ...j, code: s.code };
@@ -146,13 +184,13 @@
       </span>`).join('');
     render(main, `
       <div class="lobby">
-        <div class="join-box stack">
+        <div class="stack"><div class="join-box stack ${league.table().length ? 'compact' : ''}">
           <div class="dim">Grab your phone and go to</div>
           <div style="font-size:1.6em;font-weight:700">${esc((joinInfo.base || '').replace(/^https?:\/\//, ''))}</div>
           <div class="dim">and enter the code</div>
           <div class="code">${s.code}</div>
           <div><img src="${joinInfo.qr}" alt="QR code to join"></div>
-        </div>
+        </div>${leagueCard()}</div>
         <div class="stack">
           <div class="card">
             <div class="row" style="margin-bottom:12px"><b>Players (${s.players.length}/10)</b><span class="grow"></span><span class="dim" style="font-size:.8em">👑 = VIP, can start from their phone</span></div>
@@ -161,6 +199,8 @@
           <div class="card" id="picker">${window.CW.lobby.html(s)}</div>
         </div>
       </div>`, 'lobby');
+    const lr = $('#leagueReset');
+    if (lr) lr.onclick = () => { if (confirm('Wipe the all-time league table on this device?')) { localStorage.removeItem('cwLeague'); drawLobby(); } };
     main.querySelectorAll('[data-kick]').forEach((b) => b.addEventListener('click', () => {
       const p = s.players.find((x) => x.id === b.dataset.kick);
       if (p && confirm(`Remove ${p.name}?`)) action('kick', { playerId: p.id });
@@ -506,6 +546,25 @@
       <div style="margin-top:3vh;min-height:3.5em">${banner || (reveal ? '' : `<p class="center dim">Vote on your phone · ${b.voted}/${b.voters} voted</p>`)}</div>`;
   }
 
+  function leagueCard() {
+    const t = league.table();
+    if (!t.length) return '';
+    const fav = (p) => { const e = Object.entries(p.best).sort((a, b) => b[1] - a[1])[0]; return e ? GAME_NAMES[e[0]] || '' : ''; };
+    return `<div class="card league">
+      <div class="row"><b>📈 All-time league</b><span class="grow"></span><button class="btn small ghost" id="leagueReset" title="Reset">Reset</button></div>
+      <table><tr><th></th><th>Name</th><th title="Games won">Wins</th><th title="Champion of the Night">🏆</th><th>Played</th><th>Best at</th></tr>
+      ${t.slice(0, 8).map((p, i) => `<tr class="${i === 0 ? 'lead' : ''}"><td>${i + 1}</td><td>${esc(p.name)}</td><td>${p.wins}</td><td>${p.nights || ''}</td><td>${p.games}</td><td class="dim">${esc(fav(p))}</td></tr>`).join('')}</table>
+      <div class="dim" style="font-size:.7em;margin-top:6px">Kept on this TV/laptop. Use the same name each time to keep your record.</div></div>`;
+  }
+
+  function leagueLine() {
+    const t = league.table();
+    if (!t.length || !t[0].wins) return '';
+    const lead = t[0];
+    const tie = t.filter((p) => p.wins === lead.wins);
+    return `<p class="league-line">📈 All-time league: ${tie.length > 1 ? `${tie.map((p) => esc(p.name)).join(' & ')} tied on` : `<b>${esc(lead.name)}</b> leads with`} ${lead.wins} win${lead.wins === 1 ? '' : 's'}</p>`;
+  }
+
   function winner(scores) {
     const top = scores[0];
     return `<div class="center winner">
@@ -514,7 +573,7 @@
         ${top ? `<div class="win-pic">${window.CW.avatar(top, 'happy')}</div>` : ''}
         <div class="banner win-name" style="font-size:4.5em;color:${top ? top.colour : 'var(--yellow)'}">${top ? esc(top.name) : '—'}</div>
       </div>
-      ${scoreboard(scores)}</div>`;
+      ${scoreboard(scores)}${leagueLine()}</div>`;
   }
 
   // ---------- Story Time reveal: line by line, optionally read aloud ----------
