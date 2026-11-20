@@ -12,7 +12,7 @@ const PUBLIC_URL = process.env.PUBLIC_URL || ''; // e.g. https://family.example.
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { pingInterval: 10000, pingTimeout: 8000 });
+const io = new Server(server, { pingInterval: 10000, pingTimeout: 8000, maxHttpBufferSize: 1.5e6 });
 const rooms = new RoomManager(io);
 
 function lanAddress() {
@@ -42,6 +42,14 @@ app.get('/api/join-info', async (req, res) => {
   const url = code ? `${base}/?code=${code}` : base;
   const qr = await QRCode.toDataURL(url, { margin: 1, width: 320, color: { dark: '#14112b', light: '#ffffff' } });
   res.json({ base, url, qr });
+});
+
+// Photos players added for tonight's quiz (kept in memory with the room).
+app.get('/room-photo/:code/:id', (req, res) => {
+  const r = rooms.get(req.params.code);
+  const ph = r && r.photos.find((x) => x.id === req.params.id);
+  if (!ph) return res.status(404).end();
+  res.set('Cache-Control', 'private, max-age=3600').type(ph.mime).send(ph.data);
 });
 
 app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.rooms.size }));
@@ -120,6 +128,11 @@ io.on('connection', (socket) => {
     if (!p) return ack(cb, { error: 'Not in a room' });
     const isVIP = room.vip && room.vip.id === p.id;
     const type = String(msg.type || '');
+    if (type === 'photo:add' || type === 'photo:del') {
+      const res = type === 'photo:add' ? room.addPhoto(p, msg.data) : room.removePhoto(p, (msg.data || {}).id);
+      room.update();
+      return ack(cb, res);
+    }
     if (type === 'look' || type === 'colour') {
       const res = type === 'look' ? room.shuffleLook(p) : room.nextColour(p);
       room.update();

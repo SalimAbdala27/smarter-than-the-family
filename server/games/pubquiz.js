@@ -40,8 +40,9 @@ class PubQuiz extends BaseGame {
     const o = this.options;
     const count = [10, 15, 20, 30].includes(Number(o.count)) ? Number(o.count) : 15;
     const allCats = quizBank.categories().map((c) => c.id);
+    const wantPhotos = Array.isArray(o.categories) && o.categories.includes('ourphotos');
     const cats = (Array.isArray(o.categories) ? o.categories : []).filter((c) => allCats.includes(c));
-    const catIds = cats.length ? cats : allCats;
+    const catIds = cats.length ? cats : wantPhotos ? [] : allCats;
     const catName = Object.fromEntries(quizBank.categories().map((c) => [c.id, `${c.emoji} ${c.name}`]));
     const custom = clean(o.custom, 60);
     let picked = [];
@@ -74,7 +75,14 @@ class PubQuiz extends BaseGame {
       }
     }
 
-    if (picked.length < count) {
+    // The room's own photos: all of them if picked as a genre, a few in a mix.
+    const photoQs = this.photoQuestions();
+    if (photoQs.length && o.photos !== false && (wantPhotos || !cats.length)) {
+      const n = Math.min(photoQs.length, Math.max(0, count - picked.length), wantPhotos && !cats.length ? count : wantPhotos ? Math.ceil(count / 2) : Math.min(4, Math.ceil(count / 4)));
+      picked = picked.concat(pickFresh(photoQs, n, this.seen));
+    }
+
+    if (picked.length < count && catIds.length) {
       // Spread questions across the chosen categories rather than letting the biggest one dominate.
       const pool = bankFor(catIds).filter((q) => !picked.some((p) => p.q === q.q));
       const byCat = {};
@@ -88,7 +96,7 @@ class PubQuiz extends BaseGame {
     }
 
     this.questions = shuffle(picked).slice(0, count).map((q) => {
-      const base = { q: q.q, kind: q.kind, emoji: q.emoji, image: q.image, answer: q.answer, accept: q.accept, category: q.label || catName[q.cat] || '' };
+      const base = { q: q.q, kind: q.kind, emoji: q.emoji, image: q.image, answer: q.answer, accept: q.accept, owner: q.owner, category: q.label || catName[q.cat] || '' };
       if (q.kind === 'choice') {
         base.options = shuffle([q.answer, ...q.wrong]);
         base.correct = base.options.indexOf(q.answer);
@@ -99,7 +107,7 @@ class PubQuiz extends BaseGame {
     if (o.chase !== false) {
       const used = new Set(this.questions.map((q) => q.q + q.answer));
       const pickChase = (ids) => bankFor(ids).filter((q) => q.kind === 'choice' && q.wrong.length === 3 && !used.has(q.q + q.answer));
-      let pool = pickChase(catIds);
+      let pool = pickChase(catIds.length ? catIds : allCats);
       if (pool.length < 15) pool = pickChase(allCats);
       this.chaseQs = pickFresh(pool, 15, this.seen).map((q) => {
         const options = shuffle([q.answer, ...q.wrong]);
@@ -109,6 +117,22 @@ class PubQuiz extends BaseGame {
     this.qi = -1;
     this.nextQuestion();
     this.room.update();
+  }
+
+  photoQuestions() {
+    const names = this.players.map((p) => p.name);
+    return this.room.photos.map((ph) => {
+      const owner = this.player(ph.by);
+      const common = { id: `photo:${ph.id}`, cat: 'ourphotos', label: '📸 Our photos', image: `/room-photo/${this.room.code}/${ph.id}`, owner: ph.by };
+      if (ph.kind === 'baby') {
+        if (!owner) return null;
+        const others = shuffle(names.filter((n) => n !== owner.name)).slice(0, 3);
+        if (!others.length) return null;
+        return { ...common, kind: 'choice', q: ph.q, answer: owner.name, wrong: others };
+      }
+      const accept = ph.answer.split('/').map((x) => x.trim()).filter(Boolean);
+      return { ...common, kind: 'typed', q: ph.q, answer: accept[0], accept };
+    }).filter(Boolean);
   }
 
   get current() { return this.questions[this.qi]; }
@@ -146,7 +170,7 @@ class PubQuiz extends BaseGame {
     }
     const fastest = Object.entries(this.answers).filter(([pid]) => this.result[pid].right).sort((a, b) => a[1].at - b[1].at)[0];
     if (fastest) this.stat(fastest[0], 'fastest');
-    this.players.filter((p) => p.connected && !this.answers[p.id]).forEach((p) => this.stat(p.id, 'asleep'));
+    this.players.filter((p) => p.connected && !this.answers[p.id] && p.id !== q.owner).forEach((p) => this.stat(p.id, 'asleep'));
     this.screen = 'reveal';
     this.timer(q.kind === 'typed' ? REVEAL_MS + 3000 : REVEAL_MS, () => this.afterReveal());
   }
@@ -160,7 +184,8 @@ class PubQuiz extends BaseGame {
     return this.nextQuestion();
   }
 
-  allIn() { return this.players.filter((x) => x.connected).every((x) => this.answers[x.id]); }
+  // The person who added a photo sits that question out.
+  allIn() { return this.players.filter((x) => x.connected && x.id !== (this.current && this.current.owner)).every((x) => this.answers[x.id]); }
 
   get inChase() { return !!this.chase && this.screen.startsWith('chase'); }
 
@@ -168,6 +193,7 @@ class PubQuiz extends BaseGame {
     if (type === 'answer' && this.inChase) return this.chase.answer(p, d.choice);
     if (type !== 'answer' || this.screen !== 'question' || this.answers[p.id]) return;
     const q = this.current;
+    if (q.owner === p.id) return;
     if (q.kind === 'choice') {
       const c = Number(d.choice);
       if (!(c >= 0 && c < q.options.length)) return;
@@ -214,7 +240,7 @@ class PubQuiz extends BaseGame {
 
   questionView() {
     const q = this.current;
-    return { q: q.q, kind: q.kind, emoji: q.emoji, image: q.image, options: q.options, category: q.category };
+    return { q: q.q, kind: q.kind, emoji: q.emoji, image: q.image, options: q.options, category: q.category, owner: q.owner };
   }
 
   hostView() {
@@ -258,6 +284,7 @@ class PubQuiz extends BaseGame {
       v.question = this.questionView();
       const a = this.answers[p.id];
       v.myAnswer = a ? (q.kind === 'choice' ? a.choice : a.text) : null;
+      v.isMine = q.owner === p.id;
     }
     if (this.screen === 'reveal') {
       v.correct = q.correct;

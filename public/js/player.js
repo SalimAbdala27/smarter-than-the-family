@@ -134,15 +134,87 @@
   const meBig = (mood, text, sub = '') => `<div class="wait"><div><div class="me-big ${mood}">${window.CW.avatar(state.me, mood)}</div><h1 style="margin-top:12px">${esc(text)}</h1>${sub ? `<p class="dim">${sub}</p>` : ''}</div></div>`;
   const timer = () => '<div class="timer" data-timer style="margin-bottom:14px"><i></i></div>';
 
+  // ---------- photos for the quiz ----------
+  const ph = { open: false, pending: null, kind: 'baby', err: '', busy: false };
+  function shrink(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 720 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        let q = 0.82;
+        let d = c.toDataURL('image/jpeg', q);
+        while (d.length > 560000 && q > 0.4) { q -= 0.12; d = c.toDataURL('image/jpeg', q); }
+        resolve(d);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read that photo')); };
+      img.src = url;
+    });
+  }
+  function photoPanel() {
+    const mine = state.me.photos || [];
+    return `<div class="row"><h1 class="grow" style="margin:0">📸 Your photos</h1><button class="btn small ghost" data-ph="close">Done</button></div>
+      <p class="dim" style="margin-top:4px">They pop up in the Pub Quiz. Nobody sees them till then!</p>
+      ${mine.length ? `<div class="ph-list">${mine.map((x) => `<div class="ph-item"><img src="${esc(x.url)}" alt=""><div class="grow"><small>${esc(x.q)}</small><b>${x.kind === 'baby' ? 'You!' : esc(x.answer)}</b></div><button class="veto" data-ph-del="${esc(x.id)}">🗑</button></div>`).join('')}</div>` : ''}
+      <div class="card stack ph-form">
+        <div class="ph-kinds"><button class="toggle ${ph.kind === 'baby' ? 'on' : ''}" data-ph-kind="baby">👶 Baby photo of me</button><button class="toggle ${ph.kind === 'other' ? 'on' : ''}" data-ph-kind="other">📷 Something else</button></div>
+        ${ph.pending ? `<img class="ph-preview" src="${ph.pending}" alt=""><button class="btn small ghost" data-ph="clear">Choose a different one</button>` : '<label class="btn block ghost ph-pick">📁 Choose a photo<input type="file" accept="image/*" id="phFile" hidden></label>'}
+        ${ph.kind === 'other' ? `<input class="field" data-key="phq" id="phQ" maxlength="80" placeholder="Question, e.g. Where was this taken?">
+          <input class="field" data-key="pha" id="phA" maxlength="60" placeholder="Answer (use / for alternatives)" autocomplete="off">` : '<p class="dim" style="margin:0">Everyone guesses whose baby photo it is. You sit that one out.</p>'}
+        ${ph.err ? `<div class="err">${esc(ph.err)}</div>` : ''}
+        <button class="btn block" id="phAdd" ${ph.pending && !ph.busy ? '' : 'disabled'}>${ph.busy ? 'Uploading…' : 'Add to the quiz'}</button>
+      </div>`;
+  }
+  const photoButton = () => `<button class="btn block ghost" data-ph="open" style="margin-top:12px">📸 Add photos to the quiz${state.me.photos && state.me.photos.length ? ` (${state.me.photos.length} added)` : ''}</button>`;
+
+  function bindPhotos() {
+    main.querySelectorAll('[data-ph]').forEach((b) => b.addEventListener('click', () => {
+      const a = b.dataset.ph;
+      if (a === 'open') ph.open = true;
+      if (a === 'close') { ph.open = false; ph.err = ''; }
+      if (a === 'clear') ph.pending = null;
+      lastFormKey = ''; draw();
+    }));
+    main.querySelectorAll('[data-ph-kind]').forEach((b) => b.addEventListener('click', () => { ph.kind = b.dataset.phKind; lastFormKey = ''; draw(); }));
+    main.querySelectorAll('[data-ph-del]').forEach((b) => b.addEventListener('click', () => send('photo:del', { id: b.dataset.phDel })));
+    const file = $('#phFile');
+    if (file) file.addEventListener('change', async () => {
+      const f = file.files && file.files[0];
+      if (!f) return;
+      ph.err = '';
+      try { ph.pending = await shrink(f); } catch (e) { ph.err = e.message; }
+      lastFormKey = ''; draw();
+    });
+    const add = $('#phAdd');
+    if (add) add.addEventListener('click', async () => {
+      const q = $('#phQ') ? $('#phQ').value.trim() : '';
+      const answer = $('#phA') ? $('#phA').value.trim() : '';
+      if (ph.kind === 'other' && !answer) { ph.err = 'Pop the answer in'; lastFormKey = ''; return draw(); }
+      ph.busy = true; lastFormKey = ''; draw();
+      const r = await send('photo:add', { data: ph.pending, kind: ph.kind, q, answer });
+      ph.busy = false;
+      if (r && r.error) ph.err = r.error;
+      else { ph.pending = null; ph.err = ''; if ($('#phA')) $('#phA').value = ''; window.CW.buzz(30); }
+      lastFormKey = ''; draw();
+      return undefined;
+    });
+  }
+
   function lobby() {
+    if (ph.open) return photoPanel();
     const others = state.players.map((p) => `<span class="avatar-chip ${p.connected ? '' : 'off'}" style="font-size:.8em"><span class="pic">${window.CW.avatar(p, 'idle')}</span><span class="nm">${esc(p.name)}</span></span>`).join(' ');
     if (state.me.isVIP) {
       return `<h1>You're the VIP 👑</h1><p class="dim">Pick a game and start when everyone's in.</p>
         <div class="row" style="gap:6px;margin-bottom:8px">${others}</div>
         ${lookButtons()}
-        <div id="picker">${window.CW.lobby.html(state)}</div>`;
+        ${photoButton()}
+        <div id="picker" style="margin-top:14px">${window.CW.lobby.html(state)}</div>`;
     }
-    return `<div class="wait"><div><div class="pop" data-a="me-${state.me.look}-${state.me.colour}" style="width:150px;height:165px;margin:0 auto">${window.CW.avatar(state.me, 'happy')}</div>${lookButtons()}<h2 style="margin-top:12px">You're in!</h2><p class="dim">This is you. Tonight: are you smarter than <b style="color:var(--yellow)">${esc(state.crew.name)}</b>?</p><p class="dim">Waiting for the VIP to start the game.</p></div></div><div class="row" style="gap:6px;justify-content:center">${others}</div>`;
+    return `<div class="wait"><div><div class="pop" data-a="me-${state.me.look}-${state.me.colour}" style="width:150px;height:165px;margin:0 auto">${window.CW.avatar(state.me, 'happy')}</div>${lookButtons()}<h2 style="margin-top:12px">You're in!</h2><p class="dim">This is you. Tonight: are you smarter than <b style="color:var(--yellow)">${esc(state.crew.name)}</b>?</p><p class="dim">Waiting for the VIP to start the game.</p>${photoButton()}</div></div><div class="row" style="gap:6px;justify-content:center">${others}</div>`;
   }
 
   const lookButtons = () => '<div class="lobby-me"><button class="btn small ghost" data-me="look">🔀 New look</button><button class="btn small ghost" data-me="colour">🎨 Colour</button></div>';
@@ -268,6 +340,7 @@
     pubquiz: {
       question: (g) => {
         const q = g.question;
+        if (g.isMine) return wait('🤫', "It's your photo!", 'Sit this one out and watch everyone else squirm');
         const media = q.image ? `<div class="center"><img class="quiz-img" src="${esc(q.image)}" alt=""></div>` : q.emoji ? `<div class="emoji-q center">${esc(q.emoji)}</div>` : '';
         if (q.kind === 'typed') {
           if (g.myAnswer != null) return wait('🔒', 'Locked in', `You said: “${esc(g.myAnswer)}”`);
@@ -283,6 +356,7 @@
           </div>`;
       },
       reveal: (g) => {
+        if (g.isMine) return wait('📸', 'That was your photo!', `The answer: ${esc(g.answer)}`);
         if (g.myAnswer == null) return meBig('sad', 'Too slow!', `It was: ${esc(g.answer)}`);
         return g.right ? meBig('happy', `Correct! +${g.gained}`, `It was: ${esc(g.answer)}`) : meBig('sad', 'Wrong!', `It was: ${esc(g.answer)}`);
       },
@@ -369,6 +443,7 @@
 
   // ---------- events ----------
   function bind(g) {
+    bindPhotos();
     main.querySelectorAll('[data-me]').forEach((b) => b.addEventListener('click', () => { window.CW.buzz(15); send(b.dataset.me); }));
     if (!g) {
       const picker = $('#picker');

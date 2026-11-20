@@ -378,18 +378,18 @@
       const people = state.players.filter((p) => p.connected || res[p.id]);
       foot = `<div class="late-crowd">${crowd(people.map((p) => {
         const r = res[p.id];
+        if (p.id === q.owner) return { ...p, state: 'idle', note: '📸 theirs' };
         return { ...p, state: !r ? 'asleep' : r.right ? 'right' : 'wrong', note: r && r.right ? `+${r.gained}` : '' };
       }))}</div>`;
     } else {
       const people = state.players.filter((p) => p.connected);
-      foot = crowd(people.map((p) => ({ ...p, state: g.answered.includes(p.id) ? 'done' : 'typing' })));
+      foot = crowd(people.map((p) => (p.id === q.owner ? { ...p, state: 'idle', note: '📸 theirs' } : { ...p, state: g.answered.includes(p.id) ? 'done' : 'typing' })));
     }
     return `
       ${g.notice && g.n === 1 ? `<p class="center" style="color:var(--pink)">${esc(g.notice)}</p>` : ''}
       <div class="kicker">QUESTION ${g.n} OF ${g.of}${q.category ? ` · ${esc(q.category.toUpperCase())}` : ''}</div>
       <div class="big-q ${reveal ? '' : 'pop'} ${media ? 'with-media' : ''}" style="margin-top:2vh">${esc(q.q)}</div>
-      ${media}
-      ${body}
+      ${media && q.kind === 'choice' ? `<div class="q-split">${media}${body}</div>` : `${media}${body}`}
       <div class="row" style="justify-content:center;margin-top:3vh;min-height:5em">${foot}</div>`;
   }
 

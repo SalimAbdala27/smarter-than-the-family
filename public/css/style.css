@@ -611,3 +611,20 @@ body.player { min-height: 100dvh; }
 .aw-card .ws span { display: inline-flex; align-items: center; gap: .3em; }
 .aw-card .mini { display: inline-block; width: 1.7em; height: 1.9em; }
 .aw-card .l { color: var(--dim); font-size: .85em; }
+
+/* ---------- photos ---------- */
+.ph-list { display: grid; gap: 8px; margin: 10px 0; }
+.ph-item { display: flex; align-items: center; gap: 12px; background: var(--panel); border-radius: 14px; padding: 8px; }
+.ph-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 10px; }
+.ph-item small { display: block; color: var(--dim); font-size: .78em; }
+.ph-item .veto { background: var(--bg2); border-radius: 12px; padding: 10px 12px; }
+.ph-form { margin-top: 12px; }
+.ph-kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ph-preview { width: 100%; max-height: 40vh; object-fit: contain; border-radius: 14px; background: #000; animation: pop .35s cubic-bezier(.2,1.6,.4,1) both; }
+.ph-pick { text-align: center; cursor: pointer; }
+.quiz-img[src^="/room-photo"] { background: #000; }
+.q-split { display: grid; grid-template-columns: 1fr 1.1fr; gap: 3vw; align-items: center; max-width: 80em; margin: 2vh auto 0; width: 100%; }
+.q-split > .center { margin-top: 0 !important; }
+.q-split .quiz-img { max-height: 40vh; max-width: 100%; }
+.q-split .answers4 { grid-template-columns: 1fr; margin-top: 0; gap: 1vh; }
+.q-split .ans { padding: .6em 1em; font-size: 1.35em; }

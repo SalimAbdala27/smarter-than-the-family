@@ -9,6 +9,9 @@ const COLOURS = ['#ff5d73', '#ffb627', '#3ddc97', '#4cc9f0', '#b388ff', '#ff8fab
 const MAX_PLAYERS = 10;
 const MAX_NAME = 14;
 const IDLE_ROOM_MS = 45 * 60 * 1000;
+const MAX_PHOTOS = 40;
+const MAX_PHOTOS_EACH = 6;
+const MAX_PHOTO_BYTES = 450 * 1024;
 // Who chases you in the Final Chase. Also sets the title: "Are You Smarter Than <name>?"
 const CREWS = {
   family: 'The Family',
@@ -33,6 +36,7 @@ class Room {
     this._pending = false;
     this.crew = { id: 'family', name: '' };
     this.stats = {}; // pid → { statKey: count } for the end-of-night awards
+    this.photos = []; // players' own photos for the quiz: { id, by, kind: baby|other, q, answer, mime, data }
     this.gamesPlayed = 0;
   }
 
@@ -113,6 +117,31 @@ class Room {
     return { ok: true };
   }
 
+  addPhoto(p, d = {}) {
+    const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(d.data || ''));
+    if (!m) return { error: 'That photo did not upload properly' };
+    const data = Buffer.from(m[2], 'base64');
+    if (data.length > MAX_PHOTO_BYTES) return { error: 'Photo is too big' };
+    if (this.photos.length >= MAX_PHOTOS) return { error: `The room already has ${MAX_PHOTOS} photos` };
+    if (this.photos.filter((x) => x.by === p.id).length >= MAX_PHOTOS_EACH) return { error: `Max ${MAX_PHOTOS_EACH} photos each` };
+    const kind = d.kind === 'baby' ? 'baby' : 'other';
+    const answer = String(d.answer || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const q = String(d.q || '').replace(/\s+/g, ' ').trim().slice(0, 80) || 'What is this?';
+    if (kind === 'other' && !answer) return { error: 'Add the answer' };
+    const photo = { id: crypto.randomBytes(5).toString('hex'), by: p.id, kind, q: kind === 'baby' ? 'Whose baby photo is this?' : q, answer, mime: m[1], data, at: Date.now() };
+    this.photos.push(photo);
+    return { ok: true, id: photo.id };
+  }
+
+  removePhoto(p, id) {
+    this.photos = this.photos.filter((x) => !(x.id === id && x.by === p.id));
+    return { ok: true };
+  }
+
+  photoView(p) {
+    return this.photos.filter((x) => x.by === p.id).map((x) => ({ id: x.id, kind: x.kind, q: x.q, answer: x.answer, url: `/room-photo/${this.code}/${x.id}` }));
+  }
+
   setCrew(d = {}) {
     if (CREWS[d.id]) this.crew.id = d.id;
     if (d.name !== undefined) {
@@ -169,6 +198,7 @@ class Room {
       players: this.players.map((p) => ({ id: p.id, name: p.name, colour: p.colour, look: p.look, score: p.score, connected: p.connected })),
       games: Object.values(GAMES).map((G) => G.meta).filter((m) => !m.hidden),
       gamesPlayed: this.gamesPlayed,
+      photoCount: this.photos.length,
       lastResult: this.lastResult || null,
       lastGameId: this.lastGameId,
       ai: ai.enabled(),
@@ -186,7 +216,7 @@ class Room {
     return {
       ...this.baseView(),
       role: 'player',
-      me: { id: p.id, name: p.name, colour: p.colour, look: p.look, score: p.score, isVIP: this.vip && this.vip.id === p.id },
+      me: { id: p.id, name: p.name, colour: p.colour, look: p.look, score: p.score, isVIP: this.vip && this.vip.id === p.id, photos: this.photoView(p) },
       game: this.game ? this.game.playerView(p) : null,
     };
   }

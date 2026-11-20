@@ -171,6 +171,29 @@ async function playGame(host, bots, gameId, options) {
   if (!aw.length || !aw[aw.length - 1].final) throw new Error('no champion award');
   if (r.st.gamesPlayed !== bots[0].state.gamesPlayed) throw new Error('awards counted as a game');
 
+  // Photos: two players add photos, then a quiz made only of "our photos".
+  await emit(host, 'host:action', { type: 'lobby' });
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  let pr = await emit(bots[1].s, 'player:action', { type: 'photo:add', data: { data: png, kind: 'baby' } });
+  if (!pr.ok) throw new Error(`photo add failed: ${pr.error}`);
+  pr = await emit(bots[2].s, 'player:action', { type: 'photo:add', data: { data: png, kind: 'other', q: 'Where was this taken?', answer: 'Blackpool / Blackpool beach' } });
+  if (!pr.ok) throw new Error(`photo add failed: ${pr.error}`);
+  const bad = await emit(bots[2].s, 'player:action', { type: 'photo:add', data: { data: 'data:text/html;base64,PGI+', kind: 'baby' } });
+  if (!bad.error) throw new Error('non-image accepted');
+  await sleep(100);
+  if (bots[1].state.me.photos.length !== 1 || bots[0].state.photoCount !== 2) throw new Error('photo counts wrong');
+  const imgRes = await fetch(`${URL}${bots[1].state.me.photos[0].url}`);
+  if (imgRes.status !== 200 || !/image\/png/.test(imgRes.headers.get('content-type'))) throw new Error('photo not served');
+  const photoQs = [];
+  const watch = (st) => { const g = st.game; if (g && g.id === 'pubquiz' && g.screen === 'question' && !photoQs.some((x) => x.q === g.question.image)) photoQs.push({ q: g.question.image, owner: g.question.owner, kind: g.question.kind, options: g.question.options }); };
+  host.on('state', watch);
+  r = await playGame(host, bots, 'pubquiz', { count: 10, categories: ['ourphotos'], chase: false });
+  host.off('state', watch);
+  if (photoQs.length !== 2) throw new Error(`expected 2 photo questions, got ${photoQs.length}`);
+  const baby = photoQs.find((x) => x.kind === 'choice');
+  if (!baby || !baby.options.includes('BEX') || baby.owner !== bots[1].state.me.id) throw new Error('baby photo question wrong');
+  console.log('Photo round ✓', photoQs.map((x) => `${x.kind}${x.options ? ` [${x.options.join(', ')}]` : ''}`).join(' | '));
+
   // Head to Head needs 3+: drop to 2 and check it refuses.
   await emit(host, 'host:action', { type: 'lobby' });
   bots[2].s.disconnect(); bots[3].s.disconnect();
