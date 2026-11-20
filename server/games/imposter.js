@@ -119,6 +119,9 @@ class Imposter extends BaseGame {
     this.outcome = !this.caught ? 'escaped' : stole ? 'stole' : 'caught';
     this.gained = {};
     const add = (pid, n) => { this.gained[pid] = (this.gained[pid] || 0) + n; const p = this.player(pid); if (p) p.score += n; };
+    if (this.outcome !== 'caught') this.stat(this.imposter, 'liar');
+    if (this.accused && !this.caught) this.stat(this.accused, 'suspicious');
+    Object.entries(this.votes).forEach(([voter, pid]) => { if (pid === this.imposter && voter !== this.imposter) this.stat(voter, 'detective'); });
     if (this.outcome === 'escaped') add(this.imposter, 300);
     else if (this.outcome === 'stole') add(this.imposter, 200);
     else {

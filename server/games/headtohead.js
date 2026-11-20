@@ -113,11 +113,13 @@ class HeadToHead extends BaseGame {
       for (const pid of [m.a, m.b]) {
         const per = (m.answers[pid].safety ? 50 : 100) * this.mult;
         res.points[pid] = res.votes[pid].length * per;
+        this.stat(pid, 'laughs', res.votes[pid].length);
       }
       const total = res.votes[m.a].length + res.votes[m.b].length;
       for (const pid of [m.a, m.b]) {
         if (total >= 2 && res.votes[pid].length === total) {
           res.sweep = pid;
+          this.stat(pid, 'whitewash');
           res.points[pid] += 100 * this.mult;
         }
       }
@@ -149,7 +151,7 @@ class HeadToHead extends BaseGame {
     this.clearTimer();
     const tally = {};
     Object.values(this.final.votes).forEach((pid) => { tally[pid] = (tally[pid] || 0) + 1; });
-    for (const [pid, n] of Object.entries(tally)) { const p = this.player(pid); if (p) p.score += n * 300; }
+    for (const [pid, n] of Object.entries(tally)) { const p = this.player(pid); if (p) p.score += n * 300; this.stat(pid, 'laughs', n); }
     this.final.tally = tally;
     this.screen = 'finalResult';
     this.timer(12000, () => { this.screen = 'over'; });
@@ -162,6 +164,7 @@ class HeadToHead extends BaseGame {
       const text = type === 'safety' ? SAFETY[Math.floor(Math.random() * SAFETY.length)] : clean(d.value, 80);
       if (!text) return;
       m.answers[p.id] = { text, safety: type === 'safety' };
+      if (type === 'safety') this.stat(p.id, 'safety');
       if (this.allWritten()) this.startBattles();
     } else if (type === 'vote' && this.screen === 'battle') {
       const m = this.current;

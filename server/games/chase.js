@@ -79,14 +79,14 @@ class Chase {
     // Whoever crosses the line first (by answer speed) gets the better finishing place.
     right.forEach((p) => {
       const r = this.runners[p.id];
-      if (r.pos >= TRACK) { r.status = 'home'; r.order = this.homeCount++; }
+      if (r.pos >= TRACK) { r.status = 'home'; r.order = this.homeCount++; if (r.order === 0) g.stat(p.id, 'firstHome'); }
     });
     const familyRight = Math.random() < FAMILY_ACCURACY;
     if (familyRight) this.family += 1;
     const caught = [];
     for (const p of this.running()) {
       const r = this.runners[p.id];
-      if (this.family >= r.pos) { r.status = 'caught'; caught.push(p.id); }
+      if (this.family >= r.pos) { r.status = 'caught'; caught.push(p.id); g.stat(p.id, 'caught'); }
     }
     this.log = { familyRight, right: right.map((p) => p.id), caught };
     g.screen = 'chaseReveal';

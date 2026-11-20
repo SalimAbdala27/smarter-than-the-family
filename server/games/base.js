@@ -68,6 +68,9 @@ class BaseGame {
     this.deadline = null;
   }
 
+  // Count something for the end-of-night awards.
+  stat(pid, key, n = 1) { if (pid) this.room.stat(pid, key, n); }
+
   scoreboard() {
     return this.players
       .map((p) => ({ ...this.pub(p), score: p.score }))

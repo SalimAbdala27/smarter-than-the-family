@@ -71,7 +71,8 @@ async function playGame(host, bots, gameId, options) {
       setTimeout(() => host.emit('host:action', { type: 'next' }), 30);
     }
     if (g.id === 'storytime' && g.screen === 'results') finished(st);
-    if (g.screen === 'over') finished(st);
+    if (g.id === 'awards' && ['intro', 'award'].includes(g.screen)) setTimeout(() => host.emit('host:action', { type: 'next' }), 30);
+    if (g.screen === 'over' || g.screen === 'finale') finished(st);
   };
   host.on('state', onState);
   await sleep(600); // let stray timers from the previous game settle
@@ -151,6 +152,24 @@ async function playGame(host, bots, gameId, options) {
   console.log('Imposter ✓ screens:', [...r.seen].join(' → '));
   console.log('    scores:', r.st.game.scores.map((x) => `${x.name} ${x.score}`).join(', '));
   if (!r.st.game.scores.some((x) => x.score > 0)) throw new Error('nobody scored in imposter');
+
+  await emit(host, 'host:action', { type: 'lobby' });
+  // Shuffle a look and change colour in the lobby.
+  const before = bots[0].state.me;
+  await emit(bots[0].s, 'player:action', { type: 'look' });
+  await emit(bots[0].s, 'player:action', { type: 'colour' });
+  await sleep(100);
+  const after = bots[0].state.me;
+  if (after.look == null || after.colour === before.colour) throw new Error('look/colour did not change');
+  if (new Set(bots[0].state.players.map((x) => x.colour)).size !== bots[0].state.players.length) throw new Error('colour clash');
+  console.log('Look + colour ✓');
+
+  if (bots[0].state.gamesPlayed < 5) throw new Error(`gamesPlayed is ${bots[0].state.gamesPlayed}`);
+  r = await playGame(host, bots, 'awards', {});
+  const aw = r.st.game.all;
+  console.log('Awards ✓', aw.map((a) => `${a.emoji} ${a.title}: ${a.winners.map((w) => w.name).join('&')}`).join(' | '));
+  if (!aw.length || !aw[aw.length - 1].final) throw new Error('no champion award');
+  if (r.st.gamesPlayed !== bots[0].state.gamesPlayed) throw new Error('awards counted as a game');
 
   // Head to Head needs 3+: drop to 2 and check it refuses.
   await emit(host, 'host:action', { type: 'lobby' });

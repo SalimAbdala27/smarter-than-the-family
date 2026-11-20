@@ -50,6 +50,7 @@
           </button>`).join('')}
       </div>
       ${opts}
+      ${state.gamesPlayed ? `<button class="btn block pink" data-awards style="margin-top:16px">🏆 End-of-night awards (${state.gamesPlayed} game${state.gamesPlayed === 1 ? '' : 's'} played)</button>` : ''}
       <div style="margin-top:16px">
         <button class="btn block" data-start ${n < need ? 'disabled' : ''}>
           ${n < need ? `Need ${need - n} more player${need - n > 1 ? 's' : ''}` : `Everybody's in — start ${esc(g.name)}`}
@@ -80,6 +81,8 @@
       cn.addEventListener('change', () => send('crew', { name: cn.value }));
       cn.addEventListener('keydown', (e) => { if (e.key === 'Enter') cn.blur(); });
     }
+    const aw = root.querySelector('[data-awards]');
+    if (aw) aw.addEventListener('click', () => send('start', { gameId: 'awards', options: {} }));
     const st = root.querySelector('[data-start]');
     if (st) st.addEventListener('click', () => send('start', { gameId: pick.gameId, options: { ...pick.options, custom: pick.options.custom.trim() } }));
   }

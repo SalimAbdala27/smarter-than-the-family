@@ -587,3 +587,27 @@ body.player { min-height: 100dvh; }
 .me-big { width: 170px; height: 187px; margin: 0 auto; animation: popBig .55s cubic-bezier(.2,1.8,.4,1) both; }
 .me-big.sad { animation: sink .7s ease-out both; }
 @keyframes sink { from { transform: translateY(-30px) scale(1.1); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- awards ---------- */
+.aw-trophy { font-size: 8em; animation: popBig .8s cubic-bezier(.2,1.8,.4,1) both, wobble 2.4s .8s ease-in-out infinite; display: inline-block; }
+.aw-emoji { font-size: 7em; line-height: 1.1; margin-top: 1vh; display: inline-block; animation: spinIn .9s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes spinIn { from { transform: scale(0) rotate(-540deg); } to { transform: none; } }
+.aw-title { font-size: 3.8em; animation: stampIn .6s .4s cubic-bezier(.2,1.8,.4,1) both; }
+.aw-drum { font-size: 1.4em; margin-top: 1vh; animation: drumText 2s both; }
+@keyframes drumText { 0% { opacity: 0; } 20%, 85% { opacity: 1; } 100% { opacity: 0; } }
+.aw-winners { display: flex; justify-content: center; gap: 4vw; margin-top: -1em; min-height: 13em; }
+.aw-win { animation: winDrop .8s cubic-bezier(.2,1.5,.4,1) both; animation-delay: calc(2.05s + var(--i) * .2s); }
+.aw-win .pic { width: 9em; height: 9.9em; margin: 0 auto; }
+.aw-win .nm { font-family: var(--display); font-size: 2.6em; text-shadow: 0 5px 0 #0007; }
+.aw-line { font-size: 1.5em; font-weight: 700; animation: rise .5s 2.6s both; }
+.aw.final .aw-title { font-size: 4.6em; }
+.aw.final .aw-win .pic { width: 12em; height: 13.2em; }
+.aw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15em, 1fr)); gap: 1.2vw; max-width: 80em; margin: 3vh auto 0; }
+.aw-card { background: var(--panel); border-radius: 20px; padding: 1em; text-align: center; animation: dealIn .5s cubic-bezier(.2,1.4,.4,1) both; animation-delay: calc(var(--i) * .12s); }
+.aw-card.final { background: linear-gradient(160deg, #6b5512, var(--panel)); box-shadow: 0 0 0 4px var(--yellow); max-width: 34em; margin: 1.6vw auto 0; }
+.aw-card .em { font-size: 2.6em; }
+.aw-card .t { font-family: var(--display); color: var(--yellow); font-size: 1.15em; }
+.aw-card .ws { display: flex; flex-wrap: wrap; justify-content: center; gap: .6em; margin: .4em 0; font-weight: 700; font-size: 1.2em; }
+.aw-card .ws span { display: inline-flex; align-items: center; gap: .3em; }
+.aw-card .mini { display: inline-block; width: 1.7em; height: 1.9em; }
+.aw-card .l { color: var(--dim); font-size: .85em; }

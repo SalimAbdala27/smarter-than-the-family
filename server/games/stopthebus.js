@@ -106,6 +106,8 @@ class StopTheBus extends BaseGame {
     this.roundPoints = {};
     this.categories.forEach((_, ci) => this.categoryResults(ci).forEach((r) => {
       this.roundPoints[r.id] = (this.roundPoints[r.id] || 0) + r.points;
+      if (r.status === 'vetoed') this.stat(r.id, 'vetoed');
+      if (r.status === 'ok' && !r.shared) this.stat(r.id, 'original');
     }));
     if (this.stoppedBy && this.roundPoints[this.stoppedBy] != null) this.roundPoints[this.stoppedBy] += 10; // bonus for stopping the bus
     for (const [pid, pts] of Object.entries(this.roundPoints)) { const p = this.player(pid); if (p) p.score += pts; }
@@ -121,6 +123,7 @@ class StopTheBus extends BaseGame {
       this.answers[p.id][i] = clean(d.value, 40);
     } else if (type === 'stop' && this.screen === 'write' && this.filledAll(p.id)) {
       this.stoppedBy = p.id;
+      this.stat(p.id, 'busStops');
       this.screen = 'stopping';
       this.timer(STOP_MS, () => this.startReview());
     } else if (type === 'veto' && this.screen === 'review') {

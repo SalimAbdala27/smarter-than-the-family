@@ -106,6 +106,7 @@ class StoryTime extends BaseGame {
     for (const [bi, n] of Object.entries(tally)) {
       const p = this.player(this.blanks[bi].by);
       if (p) p.score += n * 100;
+      if (p) this.stat(p.id, 'laughs', n);
     }
     const max = Math.max(0, ...Object.values(tally));
     this.best = max ? Object.keys(tally).filter((bi) => tally[bi] === max).map(Number) : [];

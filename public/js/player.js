@@ -123,6 +123,7 @@
     } else if (g.id === 'stopthebus' && g.screen === 'roundScores') kind = g.myPoints > 0 ? 'good' : null;
     else if (g.id === 'imposter' && g.screen === 'roundResult') kind = g.gained && g.gained[me] > 0 ? 'good' : 'bad';
     else if (g.id === 'doodle' && g.screen === 'pickReveal' && g.myResult) kind = g.myResult;
+    else if (g.id === 'awards' && g.screen === 'award' && g.award.winners.some((w) => w.id === me)) { setTimeout(() => window.CW.feedback('big', main), 2050); return true; }
     else if ((g.screen === 'over' || g.screen === 'results') && g.scores && g.scores[0] && g.scores[0].id === me && g.scores[0].score > 0) kind = 'big';
     if (!kind) return false;
     setTimeout(() => window.CW.feedback(kind, main), 60);
@@ -258,6 +259,11 @@
           </div>`).join('')}`,
       roundScores: (g) => `<h1>+${g.myPoints} this round</h1>${scoreboard(g.scores)}`,
       over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
+    },
+    awards: {
+      intro: () => wait('🏆', 'Awards time!', 'Look at the big screen'),
+      award: (g) => `<div class="wait"><div><div class="big">${g.award.emoji}</div><h1 style="margin-top:12px">${esc(g.award.title)}</h1><p class="dim">Look at the big screen…</p>${g.mine.length ? `<p>Your awards: <b>${g.mine.map(esc).join(', ')}</b></p>` : ''}</div></div>`,
+      finale: (g) => `<h1>Tonight's awards</h1>${g.all.map((a) => `<div class="opt-btn ${a.winners.some((w) => w.id === state.me.id) ? 'sel' : ''}"><small>${esc(a.line)}</small>${a.emoji} ${esc(a.title)}: ${a.winners.map((w) => esc(w.name)).join(' & ')}</div>`).join('')}`,
     },
     pubquiz: {
       question: (g) => {

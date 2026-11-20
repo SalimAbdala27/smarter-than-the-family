@@ -32,6 +32,25 @@ class Room {
     this.lastActivity = Date.now();
     this._pending = false;
     this.crew = { id: 'family', name: '' };
+    this.stats = {}; // pid → { statKey: count } for the end-of-night awards
+    this.gamesPlayed = 0;
+  }
+
+  stat(pid, key, n = 1) {
+    const s = (this.stats[pid] = this.stats[pid] || {});
+    s[key] = Math.max(0, (s[key] || 0) + n);
+  }
+
+  // When a game reaches its final screen, count the win and everyone's points (once per game).
+  noteGameEnd() {
+    const g = this.game;
+    if (!g || g._ended || g.constructor.meta.hidden || !['over', 'results'].includes(g.screen)) return;
+    g._ended = true;
+    this.gamesPlayed += 1;
+    const ranked = this.players.filter((p) => p.score > 0).sort((a, b) => b.score - a.score);
+    if (ranked.length) ranked.filter((p) => p.score === ranked[0].score).forEach((p) => this.stat(p.id, 'wins'));
+    this.players.forEach((p) => this.stat(p.id, 'points', p.score));
+    this.lastResult = { gameId: g.constructor.meta.id, gid: g.gid, at: Date.now(), scores: this.players.map((p) => ({ name: p.name, score: p.score })) };
   }
 
   get connectedPlayers() { return this.players.filter((p) => p.connected); }
@@ -136,6 +155,7 @@ class Room {
   // Coalesce many state changes in one tick into one broadcast.
   update() {
     this.touch();
+    this.noteGameEnd();
     if (this._pending) return;
     this._pending = true;
     setImmediate(() => { this._pending = false; this.broadcast(); });
@@ -147,7 +167,9 @@ class Room {
       code: this.code,
       vipId: vip ? vip.id : null,
       players: this.players.map((p) => ({ id: p.id, name: p.name, colour: p.colour, look: p.look, score: p.score, connected: p.connected })),
-      games: Object.values(GAMES).map((G) => G.meta),
+      games: Object.values(GAMES).map((G) => G.meta).filter((m) => !m.hidden),
+      gamesPlayed: this.gamesPlayed,
+      lastResult: this.lastResult || null,
       lastGameId: this.lastGameId,
       ai: ai.enabled(),
       crew: this.crewView,

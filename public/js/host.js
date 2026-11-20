@@ -69,6 +69,8 @@
     const sc = g.screen;
     if (sc === 'chaseIntro') jingle([392, 392, 392, 311, 466, 392]);
     else if (sc === 'chaseReveal' && g.chase && g.chase.log && g.chase.log.caught.length) jingle([523, 415, 330, 262]);
+    else if (g.id === 'awards' && sc === 'award') { window.CW.audio.duck(true); sfx.drumroll(2); sfx.fanfare(2.05); setTimeout(() => window.CW.confetti(g.award.final ? 220 : 90, { spread: 0.6 }), 2050); }
+    else if (g.id === 'awards' && sc === 'intro') sfx.sting();
     else if (g.id === 'pubquiz' && sc === 'reveal') {
       window.CW.audio.duck(true);
       sfx.drumroll(1.2);
@@ -114,14 +116,14 @@
   }
 
   function drawFoot(g) {
-    const canSkip = !['over', 'results', 'loading'].includes(g.screen);
+    const canSkip = !['over', 'results', 'loading', 'finale'].includes(g.screen);
     const label = { write: 'Skip writing', finalWrite: 'Skip writing', question: 'Reveal answer', battle: 'End voting', finalVote: 'End voting', vote: 'End voting', reveal: g.id === 'storytime' ? 'Go to voting' : 'Next', chaseIntro: 'Start the chase', chaseQ: 'Reveal answer', stopping: 'Go to answers' }[g.screen] || 'Next';
     const impLabels = { reveal: 'Start clues', clue: 'Skip turn', discuss: 'Start voting', votereveal: 'Next', guess: 'Time up' };
     const label2 = g.id === 'stopthebus' && g.screen === 'write' ? 'Stop the bus now' : g.id === 'imposter' && impLabels[g.screen] ? impLabels[g.screen] : label;
     foot.innerHTML = `
       ${g.id === 'pubquiz' && g.screen === 'reveal' ? `<button class="btn small ghost" id="flag" ${g.flagged ? 'disabled' : ''}>${g.flagged ? 'Binned' : '👎 Bad question'}</button>` : ''}
       ${g.id === 'storytime' && g.screen === 'results' ? '<button class="btn small" id="again">Another story</button>' : ''}
-      ${(g.screen === 'over' || g.screen === 'results') ? '<button class="btn small teal" id="replay">Play again</button>' : ''}
+      ${(g.screen === 'over' || g.screen === 'results') && g.id !== 'awards' ? '<button class="btn small teal" id="replay">Play again</button>' : ''}
       ${canSkip ? `<button class="btn small ghost" id="skip">${label2} →</button>` : ''}
       <button class="btn small ghost" id="lobby">Back to lobby</button>`;
     const on = (id, fn) => { const el = $(`#${id}`); if (el) el.onclick = fn; };
@@ -291,6 +293,26 @@
         ${scoreboard(g.scores)}`,
       over: (g) => winner(g.scores),
     },
+    awards: {
+      intro: () => `<div class="center">
+        <div class="aw-trophy">🏆</div>
+        <div class="banner pop" style="font-size:3.6em">THE END OF THE NIGHT AWARDS</div>
+        <p class="dim" style="font-size:1.3em">Based on everything you got up to tonight…</p>
+        ${crowd(state.players.filter((p) => p.connected).map((p) => ({ ...p, state: 'idle' })))}</div>`,
+      award: (g) => {
+        const a = g.award;
+        return `<div class="center aw ${a.final ? 'final' : ''}">
+          <div class="kicker">${a.final ? 'AND THE BIG ONE…' : `AWARD ${g.ai + 1} OF ${g.of - (g.of > 1 ? 1 : 0)}`}</div>
+          <div class="aw-emoji">${a.emoji}</div>
+          <div class="banner aw-title">${esc(a.title.toUpperCase())}</div>
+          <div class="aw-drum dim">and it goes to…</div>
+          <div class="aw-winners">${a.winners.map((w, i) => `<div class="aw-win" style="--i:${i}"><div class="pic">${window.CW.avatar(w, 'happy')}</div><div class="nm" style="color:${w.colour}">${esc(w.name)}</div></div>`).join('')}</div>
+          <div class="aw-line">${esc(a.line)}</div></div>`;
+      },
+      finale: (g) => `<div class="banner pop">🏆 TONIGHT'S WINNERS 🏆</div>
+        <div class="aw-grid">${g.all.filter((a) => !a.final).map(awCard).join('') || (g.all.length ? '' : '<p class="dim">Play a few games first!</p>')}</div>
+        ${g.all.filter((a) => a.final).map((a) => awCard(a, g.all.length)).join('')}`,
+    },
     pubquiz: {
       question: (g) => `${timerBar()}${quizBody(g, false)}`,
       reveal: (g) => quizBody(g, true),
@@ -298,6 +320,11 @@
       over: (g) => winner(g.scores),
     },
   };
+
+  const awCard = (a, i) => `<div class="aw-card ${a.final ? 'final' : ''}" style="--i:${i}">
+    <div class="em">${a.emoji}</div><div class="t">${esc(a.title)}</div>
+    <div class="ws">${a.winners.map((w) => `<span><span class="mini">${window.CW.avatar(w, 'happy')}</span>${esc(w.name)}</span>`).join('')}</div>
+    <div class="l">${esc(a.line)}</div></div>`;
 
   function impTable(g, turnId) {
     return `<div class="imp-table">${g.table.map((p) => `

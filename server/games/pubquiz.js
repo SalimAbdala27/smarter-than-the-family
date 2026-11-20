@@ -142,7 +142,11 @@ class PubQuiz extends BaseGame {
       this.result[pid] = { right, pts };
       const p = this.player(pid);
       if (p && right) p.score += pts;
+      this.stat(pid, right ? 'quizRight' : 'quizWrong');
     }
+    const fastest = Object.entries(this.answers).filter(([pid]) => this.result[pid].right).sort((a, b) => a[1].at - b[1].at)[0];
+    if (fastest) this.stat(fastest[0], 'fastest');
+    this.players.filter((p) => p.connected && !this.answers[p.id]).forEach((p) => this.stat(p.id, 'asleep'));
     this.screen = 'reveal';
     this.timer(q.kind === 'typed' ? REVEAL_MS + 3000 : REVEAL_MS, () => this.afterReveal());
   }
@@ -191,6 +195,8 @@ class PubQuiz extends BaseGame {
       r.right = !r.right;
       r.overruled = !r.overruled;
       p.score += r.right ? r.pts : -r.pts;
+      this.stat(p.id, 'quizRight', r.right ? 1 : -1);
+      this.stat(p.id, 'quizWrong', r.right ? -1 : 1);
       this.timer(REVEAL_MS, () => this.afterReveal()); // give the room a moment to see it
       return;
     }
