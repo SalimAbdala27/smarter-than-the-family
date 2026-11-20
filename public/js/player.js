@@ -94,6 +94,9 @@
     else if (g.screen === 'loading') html = wait('✍️', g.loadingLabel || 'Loading…');
     else html = (VIEWS[g.id] && VIEWS[g.id][g.screen] ? VIEWS[g.id][g.screen](g) : wait('👀', 'Look at the big screen'));
     if (g && me.isVIP && g.screen !== 'loading') html += vipControls(g);
+    // Never rebuild a screen marked data-keep while it's showing (e.g. the drawing canvas).
+    const keep = (html.match(/data-keep="([^"]+)"/) || [])[1];
+    if (keep && main.querySelector(`[data-keep="${keep}"]`)) { runTimers(main, g && g.deadline); return; }
     // While someone is typing, don't rebuild the same form (it would close the phone keyboard).
     const inputKeys = (html.match(/data-key="[^"]*"/g) || []).join('|');
     const formKey = `${phase}#${inputKeys}`;
@@ -202,6 +205,72 @@
       lastFormKey = ''; draw();
       return undefined;
     });
+  }
+
+  // ---------- Doodle Bluff drawing pad ----------
+  const pen = { c: 0, w: 10 };
+  const dd = { key: null, strokes: [], auto: null };
+  let ddErr = '';
+  function bindCanvas(g) {
+    const cv = $('#ddCanvas');
+    if (!cv) return;
+    const key = `${g.gid}-${g.round}`;
+    if (dd.key !== key) { dd.key = key; dd.strokes = []; }
+    const ctx = cv.getContext('2d');
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const ink = window.CW.INKS;
+    const paint = () => {
+      ctx.fillStyle = '#fffdf6'; ctx.fillRect(0, 0, 1000, 1000);
+      dd.strokes.forEach((st) => {
+        ctx.strokeStyle = ink[st.c]; ctx.lineWidth = st.w;
+        ctx.beginPath(); ctx.moveTo(st.p[0], st.p[1]);
+        if (st.p.length === 2) ctx.lineTo(st.p[0] + 0.1, st.p[1]);
+        for (let i = 2; i < st.p.length; i += 2) ctx.lineTo(st.p[i], st.p[i + 1]);
+        ctx.stroke();
+      });
+    };
+    paint();
+    let cur = null;
+    const at = (e) => { const r = cv.getBoundingClientRect(); return [Math.round(((e.clientX - r.left) / r.width) * 1000), Math.round(((e.clientY - r.top) / r.height) * 1000)]; };
+    cv.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); cv.setPointerCapture(e.pointerId);
+      const [x, y] = at(e);
+      cur = { c: pen.c, w: pen.w, p: [x, y] };
+      dd.strokes.push(cur);
+      ctx.strokeStyle = ink[pen.c]; ctx.lineWidth = pen.w;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.1, y); ctx.stroke();
+    });
+    cv.addEventListener('pointermove', (e) => {
+      if (!cur) return;
+      const [x, y] = at(e);
+      const n = cur.p.length;
+      if (Math.hypot(x - cur.p[n - 2], y - cur.p[n - 1]) < 5) return;
+      ctx.beginPath(); ctx.moveTo(cur.p[n - 2], cur.p[n - 1]); ctx.lineTo(x, y); ctx.stroke();
+      cur.p.push(x, y);
+    });
+    const end = () => { cur = null; };
+    cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+    main.querySelectorAll('[data-ink]').forEach((b) => b.addEventListener('click', () => {
+      pen.c = Number(b.dataset.ink);
+      main.querySelectorAll('[data-ink]').forEach((x) => x.classList.toggle('on', x === b));
+    }));
+    main.querySelectorAll('[data-w]').forEach((b) => b.addEventListener('click', () => {
+      pen.w = Number(b.dataset.w);
+      main.querySelectorAll('[data-w]').forEach((x) => x.classList.toggle('on', x === b));
+    }));
+    $('#ddUndo').onclick = () => { dd.strokes.pop(); paint(); };
+    $('#ddClear').onclick = () => { if (!dd.strokes.length || confirm('Clear your drawing?')) { dd.strokes = []; paint(); } };
+    const sendIt = async () => {
+      clearTimeout(dd.auto);
+      if (!dd.strokes.length) { const er = $('#ddErr'); er.textContent = 'Draw something first!'; er.classList.remove('hidden'); return; }
+      $('#ddSend').disabled = true;
+      const r = await send('drawing', { s: dd.strokes });
+      if (r && r.error) { $('#ddSend').disabled = false; const er = $('#ddErr'); er.textContent = r.error; er.classList.remove('hidden'); }
+    };
+    $('#ddSend').onclick = sendIt;
+    // Send whatever's there just before time runs out.
+    clearTimeout(dd.auto);
+    if (g.deadline) dd.auto = setTimeout(() => { if (dd.strokes.length && $('#ddCanvas')) sendIt(); }, Math.max(0, g.deadline - window.CW.now() - 1500));
   }
 
   function lobby() {
@@ -330,6 +399,45 @@
             ${r.id === state.me.id ? '<span class="dim">you</span>' : r.text ? `<button class="veto ${r.myVeto ? 'on' : ''}" data-veto="${r.id}">👎${r.vetoes ? ` ${r.vetoes}` : ''}</button>` : ''}
           </div>`).join('')}`,
       roundScores: (g) => `<h1>+${g.myPoints} this round</h1>${scoreboard(g.scores)}`,
+      over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
+    },
+    doodle: {
+      draw: (g) => {
+        if (!g.prompt) return wait('👀', 'Look at the big screen', 'You joined mid-round. You\'ll get a drawing next round.');
+        if (g.myDrawn) return wait('🎨', 'Masterpiece sent!', 'Waiting for the other artists…');
+        const ink = window.CW.INKS;
+        return `<div data-keep="dd-${g.gid}-${g.round}" class="dd-draw">${timer()}
+          <div class="dd-prompt"><small>Draw this. Keep it secret!</small><b>${esc(g.prompt)}</b></div>
+          <div class="dd-canvas-wrap"><canvas id="ddCanvas" width="1000" height="1000"></canvas></div>
+          <div class="dd-inks">${ink.map((c, i) => `<button class="dd-ink ${i === pen.c ? 'on' : ''}" data-ink="${i}" style="background:${c}" aria-label="colour ${i + 1}"></button>`).join('')}</div>
+          <div class="dd-tools">
+            <button class="toggle ${pen.w === 10 ? 'on' : ''}" data-w="10">✏️ Thin</button><button class="toggle ${pen.w === 30 ? 'on' : ''}" data-w="30">🖌️ Thick</button>
+            <button class="toggle" id="ddUndo">↩️ Undo</button><button class="toggle" id="ddClear">🗑️</button></div>
+          <div class="err hidden" id="ddErr"></div>
+          <button class="btn block" id="ddSend">Send my masterpiece</button></div>`;
+      },
+      lie: (g) => {
+        if (g.isArtist) return wait('🎨', "That's yours!", 'Everyone is writing fake titles for it. Keep a straight face.');
+        if (g.myLie) return wait('🤥', 'Fake title in!', `“${esc(g.myLie)}”`);
+        return `${timer()}<div class="dd-mini">${window.CW.drawingSvg(g.drawing)}</div>
+          <h2>Write a fake title</h2><p class="dim" style="margin-top:0">Something people might believe ${esc(g.artist.name)} was trying to draw.</p>
+          <div class="stack"><input class="field" data-key="lie${g.gid}${g.round}-${g.di}" id="ddLie" maxlength="45" placeholder="e.g. A pigeon at a wedding" autocomplete="off" enterkeyhint="send">
+          <div class="err ${ddErr ? '' : 'hidden'}" id="ddErr">${esc(ddErr)}</div>
+          <button class="btn block" id="ddLieBtn">Send fake title</button></div>`;
+      },
+      pick: (g) => {
+        if (g.isArtist) return wait('😬', 'Which will they pick?', 'You get +500 for everyone who spots the real title.');
+        if (g.myPick) return wait('🔒', 'Locked in', 'Fingers crossed…');
+        return `${timer()}<div class="dd-mini small">${window.CW.drawingSvg(g.drawing)}</div><h2>Which is the real title?</h2>
+          ${g.options.map((o) => `<button class="opt-btn" data-ddpick="${o.id}" ${o.mine ? 'disabled style="opacity:.4"' : ''}>${o.mine ? '<small>your fake one</small>' : ''}${esc(o.text)}</button>`).join('')}`;
+      },
+      pickReveal: (g) => {
+        if (g.isArtist) return meBig('happy', g.myGain ? `+${g.myGain} for your drawing` : 'Nobody got it!', `It was: <b>${esc(g.prompt)}</b>`);
+        if (g.myResult === 'good') return meBig('happy', `You spotted it! +${g.myGain}`, `It was: <b>${esc(g.prompt)}</b>`);
+        if (g.myResult === 'bad') return meBig('sad', `Fooled!${g.myGain ? ` (still +${g.myGain})` : ''}`, `It was: <b>${esc(g.prompt)}</b>`);
+        return wait('👀', 'Look at the big screen');
+      },
+      scores: (g) => `<h1>Scores</h1>${scoreboard(g.scores)}`,
       over: (g) => `<h1>Final scores</h1>${scoreboard(g.scores)}`,
     },
     awards: {
@@ -487,6 +595,23 @@
       refreshStop();
       const stopBtn = $('#stopBus');
       if (stopBtn) stopBtn.onclick = () => { stbInputs.forEach(sendFill); send('stop'); };
+    }
+    // Doodle Bluff
+    if (g.id === 'doodle') {
+      bindCanvas(g);
+      const lie = $('#ddLie');
+      if (lie) {
+        const go = async () => {
+          const v = lie.value.trim();
+          if (!v) return lie.focus();
+          const r = await send('lie', { text: v });
+          if (r && r.error) { ddErr = r.error; const er = $('#ddErr'); er.textContent = r.error; er.classList.remove('hidden'); } else { ddErr = ''; }
+          return undefined;
+        };
+        $('#ddLieBtn').onclick = go;
+        lie.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+      }
+      main.querySelectorAll('[data-ddpick]').forEach((b) => b.addEventListener('click', () => send('pick', { id: b.dataset.ddpick })));
     }
     // Imposter controls
     const peek = $('#peek');

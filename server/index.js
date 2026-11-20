@@ -144,7 +144,8 @@ io.on('connection', (socket) => {
       if (res !== null) { room.update(); return ack(cb, res || { ok: true }); }
       if (room.game) room.game.onHostAction(t, msg.data || {});
     } else if (room.game) {
-      room.game.onPlayerAction(p, type, msg.data || {});
+      const res = room.game.onPlayerAction(p, type, msg.data || {});
+      if (res && res.error) { room.update(); return ack(cb, res); }
     }
     room.update();
     ack(cb, { ok: true });

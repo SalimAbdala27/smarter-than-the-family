@@ -92,5 +92,19 @@
     return (w[0] || '').charAt(0).toUpperCase();
   };
 
-  window.CW = { firstLetter, esc, $, SHAPES, setNow, now, runTimers, render, scoreboard, beep, jingle };
+  // Doodle drawings are strokes in a 1000×1000 box; draw them as SVG on the TV and phones.
+  const INKS = ['#14112b', '#ff5d73', '#4cc9f0', '#3ddc97', '#ffd23f', '#8a4b2a', '#ff8fab', '#ffffff'];
+  function drawingSvg(d, cls = '') {
+    const strokes = (d && d.s) || [];
+    const step = Math.min(70, Math.round(2600 / Math.max(1, strokes.length)));
+    return `<svg class="drawing ${cls}" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet" style="--step:${step}ms"><rect width="1000" height="1000" fill="#fffdf6"/>${strokes.map((st, i) => {
+      const p = st.p;
+      let path = `M${p[0]} ${p[1]}`;
+      if (p.length === 2) path += `l0.1 0`;
+      for (let k = 2; k < p.length; k += 2) path += `L${p[k]} ${p[k + 1]}`;
+      return `<path d="${path}" pathLength="1" stroke="${INKS[st.c] || INKS[0]}" stroke-width="${st.w}" style="--n:${i}"/>`;
+    }).join('')}</svg>`;
+  }
+
+  window.CW = { INKS, drawingSvg, firstLetter, esc, $, SHAPES, setNow, now, runTimers, render, scoreboard, beep, jingle };
 }());

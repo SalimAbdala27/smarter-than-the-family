@@ -1,7 +1,7 @@
 /* Game picker shared by the host screen and the VIP's phone. */
 (function () {
   const { esc } = window.CW;
-  const pick = { gameId: null, options: { categories: [], count: 15, custom: '', fresh: false, chase: true, rounds: 3, mode: 'classic', passes: 1 } };
+  const pick = { gameId: null, options: { categories: [], count: 15, custom: '', fresh: false, chase: true, rounds: 3, mode: 'classic', passes: 1, drawRounds: 1 } };
 
   function html(state) {
     const games = state.games;
@@ -27,11 +27,14 @@
           <button class="toggle ${o.mode === 'random' ? 'on' : ''}" data-mode="random">🎲 Random categories each round</button></div>
         <div class="opts">${[3, 5].map((r) => `<button class="toggle ${o.rounds === r ? 'on' : ''}" data-rounds="${r}">${r} rounds</button>`).join('')}</div>`;
     }
+    if (g.id === 'doodle') {
+      opts += `<div class="opts">${[1, 2].map((r) => `<button class="toggle ${o.drawRounds === r ? 'on' : ''}" data-drounds="${r}">${r === 1 ? 'One drawing each' : 'Two drawings each'}</button>`).join('')}</div>`;
+    }
     if (g.id === 'imposter') {
       opts += `<div class="opts">${[3, 5].map((r) => `<button class="toggle ${o.rounds === r ? 'on' : ''}" data-rounds="${r}">${r} rounds</button>`).join('')}</div>
         <div class="opts">${[1, 2].map((n) => `<button class="toggle ${o.passes === n ? 'on' : ''}" data-passes="${n}">${n === 1 ? 'One clue each' : 'Two clues each'}</button>`).join('')}</div>`;
     }
-    if (state.ai && !['stopthebus', 'imposter'].includes(g.id)) {
+    if (state.ai && !['stopthebus', 'imposter', 'doodle'].includes(g.id)) {
       opts += `<div class="opts"><button class="toggle ${o.fresh ? 'on' : ''}" data-fresh="1">✨ Fresh content from Claude</button></div>`;
     }
     const need = g.minPlayers;
@@ -74,6 +77,7 @@
     root.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { pick.options.mode = b.dataset.mode; rerender(); }));
     root.querySelectorAll('[data-passes]').forEach((b) => b.addEventListener('click', () => { pick.options.passes = Number(b.dataset.passes); rerender(); }));
     root.querySelectorAll('[data-rounds]').forEach((b) => b.addEventListener('click', () => { pick.options.rounds = Number(b.dataset.rounds); rerender(); }));
+    root.querySelectorAll('[data-drounds]').forEach((b) => b.addEventListener('click', () => { pick.options.drawRounds = Number(b.dataset.drounds); rerender(); }));
     root.querySelectorAll('[data-fresh]').forEach((b) => b.addEventListener('click', () => { pick.options.fresh = !pick.options.fresh; rerender(); }));
     const ct = root.querySelector('#customTopic');
     if (ct) ct.addEventListener('input', () => { pick.options.custom = ct.value; });

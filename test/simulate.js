@@ -46,6 +46,11 @@ function act(b) {
     }
     if (g.screen === 'guess' && g.isImposter) once(`ig${g.round}`, () => send('guess', { text: 'pizza' }));
   }
+  if (g.id === 'doodle') {
+    if (g.screen === 'draw' && g.prompt && !g.myDrawn) once(`dd${g.round}`, () => send('drawing', { s: [{ c: 1, w: 10, p: [100, 100, 500, 500, 900, 200] }, { c: 9, w: 999, p: [5000, -3] }] }));
+    if (g.screen === 'lie' && !g.isArtist && !g.myLie) once(`ddl${g.round}-${g.di}`, () => send('lie', { text: `${b.name} fake ${pick(WORDS)}` }));
+    if (g.screen === 'pick' && !g.isArtist && !g.myPick) once(`ddp${g.round}-${g.di}`, () => send('pick', { id: pick(g.options.filter((o) => !o.mine)).id }));
+  }
   if (g.id === 'stopthebus' && g.screen === 'review') {
     const target = g.results.find((r) => r.id !== b.state.me.id && r.text);
     if (target && Math.random() < 0.3) once(`v${g.round}${g.ci}`, () => send('veto', { pid: target.id }));
@@ -67,7 +72,7 @@ async function playGame(host, bots, gameId, options) {
     if (!g) return;
     seen.add(g.screen);
     // Host skips the "look at the screen" pauses so the test runs fast.
-    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal', 'review', 'roundScores', 'stopping', 'discuss', 'votereveal', 'roundResult'].includes(g.screen) && !(g.id === 'imposter' && g.screen === 'reveal')) {
+    if (['reveal', 'battleResult', 'scores', 'board', 'finalResult', 'chaseIntro', 'chaseReveal', 'review', 'roundScores', 'stopping', 'discuss', 'votereveal', 'roundResult', 'pickReveal'].includes(g.screen) && !(g.id === 'imposter' && g.screen === 'reveal')) {
       setTimeout(() => host.emit('host:action', { type: 'next' }), 30);
     }
     if (g.id === 'storytime' && g.screen === 'results') finished(st);
@@ -154,6 +159,17 @@ async function playGame(host, bots, gameId, options) {
   if (!r.st.game.scores.some((x) => x.score > 0)) throw new Error('nobody scored in imposter');
 
   await emit(host, 'host:action', { type: 'lobby' });
+  let drawingSeen = null;
+  const dwatch = (st) => { const g = st.game; if (g && g.id === 'doodle' && g.screen === 'lie' && !drawingSeen) drawingSeen = g.drawing; if (g && g.id === 'doodle' && g.screen === 'draw' && g.prompt) throw new Error('host can see a prompt'); };
+  host.on('state', dwatch);
+  r = await playGame(host, bots, 'doodle', { drawRounds: 2 });
+  host.off('state', dwatch);
+  console.log('Doodle Bluff ✓ screens:', [...r.seen].join(' → '));
+  console.log('    scores:', r.st.game.scores.map((x) => `${x.name} ${x.score}`).join(', '));
+  if (!r.st.game.scores.some((x) => x.score > 0)) throw new Error('nobody scored in doodle');
+  if (!drawingSeen || drawingSeen.s.length !== 2 || drawingSeen.s[1].p[0] !== 1000 || drawingSeen.s[1].c !== 7) throw new Error(`drawing not cleaned: ${JSON.stringify(drawingSeen)}`);
+
+  await emit(host, 'host:action', { type: 'lobby' });
   // Shuffle a look and change colour in the lobby.
   const before = bots[0].state.me;
   await emit(bots[0].s, 'player:action', { type: 'look' });
@@ -164,7 +180,7 @@ async function playGame(host, bots, gameId, options) {
   if (new Set(bots[0].state.players.map((x) => x.colour)).size !== bots[0].state.players.length) throw new Error('colour clash');
   console.log('Look + colour ✓');
 
-  if (bots[0].state.gamesPlayed < 5) throw new Error(`gamesPlayed is ${bots[0].state.gamesPlayed}`);
+  if (bots[0].state.gamesPlayed < 6) throw new Error(`gamesPlayed is ${bots[0].state.gamesPlayed}`);
   r = await playGame(host, bots, 'awards', {});
   const aw = r.st.game.all;
   console.log('Awards ✓', aw.map((a) => `${a.emoji} ${a.title}: ${a.winners.map((w) => w.name).join('&')}`).join(' | '));

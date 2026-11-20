@@ -71,6 +71,7 @@
     else if (sc === 'chaseReveal' && g.chase && g.chase.log && g.chase.log.caught.length) jingle([523, 415, 330, 262]);
     else if (g.id === 'awards' && sc === 'award') { window.CW.audio.duck(true); sfx.drumroll(2); sfx.fanfare(2.05); setTimeout(() => window.CW.confetti(g.award.final ? 220 : 90, { spread: 0.6 }), 2050); }
     else if (g.id === 'awards' && sc === 'intro') sfx.sting();
+    else if (g.id === 'doodle' && sc === 'pickReveal') { g.reveal.forEach((o, i) => setTimeout(() => (o.truth ? sfx.ding() : sfx.pop()), 600 + i * 1700)); if (g.reveal.length) sfx.drumroll(0.6 + (g.reveal.length - 1) * 1.7); }
     else if (g.id === 'pubquiz' && sc === 'reveal') {
       window.CW.audio.duck(true);
       sfx.drumroll(1.2);
@@ -293,6 +294,38 @@
         ${scoreboard(g.scores)}`,
       over: (g) => winner(g.scores),
     },
+    doodle: {
+      draw: (g) => `${timerBar()}
+        <div class="kicker">DOODLE BLUFF · ROUND ${g.round} OF ${g.rounds}</div>
+        <div class="big-q" style="margin-top:2vh">✏️ Draw your secret prompt on your phone!</div>
+        <p class="center dim" style="font-size:1.2em">Don't let anyone see it. Then we'll all make up fake titles for each other's drawings.</p>
+        ${crowd(state.players.filter((p) => p.connected).map((p) => ({ ...p, state: g.done.includes(p.id) ? 'done' : 'typing' })))}`,
+      lie: (g) => `${timerBar()}
+        <div class="kicker">DRAWING ${g.di + 1} OF ${g.of}</div>
+        <div class="dd-stage">${ddFrame(g)}
+          <div class="dd-side">
+            <div class="big-q" style="font-size:2.1em;text-align:left;margin:0">What on earth is this?</div>
+            <p class="dim" style="font-size:1.15em">Write a <b style="color:var(--yellow)">fake title</b> on your phone that'll fool everyone. ${esc(g.artist.name)} drew it, so they sit this bit out.</p>
+            ${crowd(state.players.filter((p) => p.connected && p.id !== g.artist.id).map((p) => ({ ...p, state: g.lied.includes(p.id) ? 'done' : 'typing' })), 'left')}
+          </div></div>`,
+      pick: (g) => `${timerBar()}
+        <div class="kicker">DRAWING ${g.di + 1} OF ${g.of} · WHICH IS THE REAL TITLE?</div>
+        <div class="dd-stage">${ddFrame(g)}
+          <div class="dd-side"><div class="dd-opts ${g.options.length > 5 ? 'many' : ''}">${g.options.map((o, i) => `<div class="dd-opt" style="--i:${i}">${esc(o.text)}</div>`).join('')}</div>
+          ${crowd(state.players.filter((p) => p.connected && p.id !== g.artist.id).map((p) => ({ ...p, state: g.picked.includes(p.id) ? 'done' : 'typing' })), 'left')}</div></div>`,
+      pickReveal: (g) => `
+        <div class="kicker">DRAWING ${g.di + 1} OF ${g.of}</div>
+        <div class="dd-stage">${ddFrame(g)}
+          <div class="dd-side"><div class="dd-opts ${g.reveal.length > 5 ? 'many' : ''}">${g.reveal.map((o, i) => `
+            <div class="dd-rev ${o.truth ? 'truth' : ''}" style="--i:${i}">
+              <div class="t">${esc(o.text)}</div>
+              <div class="who">${o.truth ? `<b class="tag ok">THE REAL ONE</b> drawn by ${esc(g.artist.name)}` : `<b class="tag">FAKE</b> by ${o.authors.map((a) => esc(a.name)).join(' & ')}`}</div>
+              <div class="pk">${o.pickers.length ? o.pickers.map((p) => `<span class="mini" title="${esc(p.name)}">${window.CW.avatar(p, o.truth ? 'happy' : 'sad')}</span>`).join('') : '<span class="dim">nobody</span>'}
+                ${o.pickers.length ? `<span class="pts">${o.truth ? `+1000 each · ${esc(g.artist.name)} +${500 * o.pickers.length}` : `+${500 * o.pickers.length} to ${o.authors.map((a) => esc(a.name)).join(' & ')}`}</span>` : ''}</div>
+            </div>`).join('')}</div></div></div>`,
+      scores: (g) => `<div class="banner">${g.round < g.rounds ? `END OF ROUND ${g.round}` : 'FINAL SCORES'}</div>${scoreboard(g.scores)}`,
+      over: (g) => winner(g.scores),
+    },
     awards: {
       intro: () => `<div class="center">
         <div class="aw-trophy">🏆</div>
@@ -320,6 +353,15 @@
       over: (g) => winner(g.scores),
     },
   };
+
+  // Each drawing "draws itself" the first time the TV shows it.
+  const drawnOnce = new Set();
+  function ddFrame(g) {
+    const k = `${g.gid}-${g.round}-${g.di}`;
+    const fresh = !drawnOnce.has(k);
+    drawnOnce.add(k);
+    return `<div class="dd-frame"><div class="dd-paper">${window.CW.drawingSvg(g.drawing, fresh ? 'draw-in' : '')}</div><div class="dd-by">by ${esc(g.artist.name)}</div></div>`;
+  }
 
   const awCard = (a, i) => `<div class="aw-card ${a.final ? 'final' : ''}" style="--i:${i}">
     <div class="em">${a.emoji}</div><div class="t">${esc(a.title)}</div>
